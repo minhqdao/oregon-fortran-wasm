@@ -27,21 +27,15 @@ jobs:
 
             - name: Build (gfortran)
               if: matrix.compiler == 'gfortran'
-              run: gfortran src/oregon.f -o oregon
+              run: gfortran src/oregon.f src/oregon_time.f -o oregon
 
             - name: Build (lfortran)
               if: matrix.compiler == 'lfortran'
-              run: |
-                  lfortran \
-                    --fixed-form \
-                    --implicit-interface \
-                    --implicit-typing \
-                    src/oregon.f \
-                    -o oregon
+              run: lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f src/oregon_time.f -o oregon
 
             - name: Build (flang)
               if: matrix.compiler == 'flang'
-              run: flang -ffixed-form src/oregon.f -o oregon
+              run: flang src/oregon.f src/oregon_time.f -o oregon
 
             - name: Smoke test
               run: |
@@ -62,6 +56,8 @@ jobs:
               uses: emscripten-core/setup-emsdk@v16
 
             - name: Build WebAssembly
+              env:
+                  EMSDK_PATH: ${{ env.EMSDK }}
               run: |
                   lfortran \
                     --fixed-form \

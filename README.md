@@ -38,6 +38,6 @@ Then run the resulting executable:
 
 ## WebAssembly Build
 
-WebAssembly artifacts are built automatically in the CI using GitHub Actions to ensure reproducible builds and a consistent toolchain configuration.
+WebAssembly artifacts are built automatically in the [CI pipeline](.github/workflows/ci.yml) to ensure reproducible builds and consistent toolchain configurations.
 
 The current implementation targets native Fortran-to-WebAssembly compilation using LFortran and Emscripten.
