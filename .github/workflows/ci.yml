@@ -45,5 +45,5 @@ jobs:
 
             - name: Smoke test
               run: |
-                  printf "N\n" | timeout 5 ./oregon > output.txt || true
+                  printf "N\n" | timeout 5 ./oregon | tee output.txt
                   grep -q "DO YOU NEED INSTRUCTIONS" output.txt
