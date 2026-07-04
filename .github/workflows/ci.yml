@@ -47,3 +47,32 @@ jobs:
               run: |
                   printf "N\n" | timeout 5 ./oregon | tee output.txt
                   grep -q "DO YOU NEED INSTRUCTIONS" output.txt
+
+    build-wasm:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup LFortran
+              uses: minhqdao/setup-fortran@v1
+              with:
+                  compiler: lfortran
+
+            - name: Setup Emscripten
+              uses: emscripten-core/setup-emsdk@v16
+
+            - name: Build WebAssembly
+              run: |
+                  lfortran \
+                    --fixed-form \
+                    --implicit-interface \
+                    --implicit-typing \
+                    --target=wasm32-unknown-emscripten \
+                    src/oregon.f \
+                    src/oregon_time.f \
+                    -o oregon.js
+
+            - name: WASM smoke test
+              run: |
+                  timeout 5 node oregon.js | tee output.txt || true
+                  grep -q "DO YOU NEED INSTRUCTIONS" output.txt
