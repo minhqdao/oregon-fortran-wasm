@@ -6,6 +6,8 @@
 tools/
 build/
 *.mod
+*.bc
+*.ll
 *.out
 *.exe
 oregon

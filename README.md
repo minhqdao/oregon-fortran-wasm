@@ -10,7 +10,7 @@ The goal of this project is to explore native Fortran-to-WebAssembly compilation
 
 Make sure either `gfortran`, `lfortran`, or `flang` are installed on your system. Other compilers may work as well but have not been tested.
 
-Then choose a command to compile the FORTRAN 77 source code:
+Choose a command to compile the FORTRAN 77 source code:
 
 #### gfortran
 
@@ -30,7 +30,7 @@ lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f src/or
 flang src/oregon.f src/oregon_time.f -o oregon
 ```
 
-Then run the resulting executable:
+Start the game by running the executable:
 
 ```bash
 ./oregon
