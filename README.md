@@ -8,9 +8,15 @@ The goal of this project is to explore native Fortran-to-WebAssembly compilation
 
 ## Development
 
+This project has been tested with `gfortran`, `lfortran`, and `flang`.
+
+### Prerequisites
+
+Make sure `gfortran`, `lfortran`, or `flang` are installed on your system.
+
 ### Compile & Run Locally
 
-First compile the FORTRAN 77 source code using `gfortran` or `lfortran`:
+First compile the FORTRAN 77 source code using `gfortran`, `lfortran`, or `flang`:
 
 #### gfortran
 
@@ -22,6 +28,12 @@ gfortran src/oregon.f -o oregon
 
 ```bash
 lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f -o oregon
+```
+
+#### flang
+
+```bash
+flang src/oregon.f -o oregon
 ```
 
 Then run the resulting executable:
