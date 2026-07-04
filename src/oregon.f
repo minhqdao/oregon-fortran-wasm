@@ -8,8 +8,8 @@ C     THIS PROGRAM IS A PORT OF THE 1978 VERSION OF "THE OREGON TRAIL"
 C     TO ANSI FORTRAN 77, ORIGINALLY WRITTEN IN HP TIME-SHARED BASIC BY
 C     DON RAWITSCH, BILL HEINEMANN, AND PAUL DILLENBERGER IN 1971.
 C
-C     AN ADDITIONAL INTEGER FUNCTION "TIME()" THAT RETURNS THE CURRENT
-C     TIME AS A TIMESTAMP IN SECONDS IS REQUIRED AND MUST BE LINKED
+C     AN ADDITIONAL INTEGER FUNCTION "OREGON_TIME()" THAT RETURNS THE CURRENT
+C     OREGON_TIME AS A TIMESTAMP IN SECONDS IS REQUIRED AND MUST BE LINKED
 C     WITH THE EXECUTABLE, IF NOT PROVIDED BY THE FORTRAN COMPILER
 C     ALREADY.
 C
@@ -21,10 +21,10 @@ C     LICENCE: ISC
 C     ******************************************************************
       PROGRAM OREGON
       EXTERNAL INSTR, PLAY, OREGON_SRAND
-      INTEGER  TIME
+      INTEGER  OREGON_TIME
       LOGICAL  ASK
 
-      CALL OREGON_SRAND(TIME())
+      CALL OREGON_SRAND(OREGON_TIME())
       PRINT 100
       IF (ASK()) CALL INSTR()
       CALL PLAY()
@@ -89,7 +89,7 @@ C
   400 FORMAT (1X,'TOO HIGH.')
       END
 C     ******************************************************************
-      REAL FUNCTION RAND()
+      REAL FUNCTION OREGON_RAND()
 C
 C     THIS FUNCTION RETURNS A PSEUDO-RANDOM NUMBER FOR EACH INVOCATION.
 C     IT IS A FORTRAN 77 ADAPTATION OF THE "INTEGER VERSION 2" MINIMAL
@@ -121,7 +121,7 @@ C
       ELSE
         NEXTN = TESTV + MODLUS
       END IF
-      RAND = REAL(NEXTN) / REAL(MODLUS)
+      OREGON_RAND = REAL(NEXTN) / REAL(MODLUS)
       END
 C     ******************************************************************
       INTEGER FUNCTION SHOOT(ILEVL)
@@ -129,18 +129,18 @@ C
 C     SHOOT STUFF BY LETTING THE PLAYER ENTER INSTANCES OF ONOMATOPOEIA.
 C
       EXTERNAL    UPPER
-      INTEGER     TIME
-      REAL        RAND
+      INTEGER     OREGON_TIME
+      REAL        OREGON_RAND
       INTEGER     ILEVL
       CHARACTER*4 A, S(4)
       INTEGER     I, T1, T2
       DATA S /'BANG','BLAM','POW','WHAM'/
 
-      I = INT(RAND() * 4 + 1)
+      I = INT(OREGON_RAND() * 4 + 1)
       PRINT 100, S(I)
-      T1 = TIME()
+      T1 = OREGON_TIME()
       READ (*, 200) A
-      T2 = TIME()
+      T2 = OREGON_TIME()
       SHOOT = (ABS(T2 - T1) * 2) - ILEVL - 1
       CALL UPPER(A)
       IF (A .EQ. 'STOP') STOP
@@ -227,16 +227,16 @@ C
 C     BLIZZARD IN MOUNTAIN PASS.
 C
       EXTERNAL SICK
-      REAL     RAND
+      REAL     OREGON_RAND
       INTEGER  ITMIL, IAMMU, ICLTH, IFOOD, IMISC, IFILL, IFINJ, IEATS
 
       PRINT 100
       IFOOD = IFOOD - 25
       IMISC = IMISC - 10
       IAMMU = IAMMU - 300
-      ITMIL = ITMIL - 30 - INT(40 * RAND())
+      ITMIL = ITMIL - 30 - INT(40 * OREGON_RAND())
 
-      IF (ICLTH .LT. 18 + INT(2 * RAND())) THEN
+      IF (ICLTH .LT. 18 + INT(2 * OREGON_RAND())) THEN
         CALL SICK(IEATS, ITMIL, IMISC, IFILL, IFINJ)
       END IF
 
@@ -367,7 +367,7 @@ C
 C     HUNTING POOR WILDLIFE.
 C
       INTEGER SHOOT
-      REAL    RAND
+      REAL    OREGON_RAND
       INTEGER IAMMU, ILEVL, IFOOD
       INTEGER IBANGT
 
@@ -378,9 +378,9 @@ C
       IBANGT = SHOOT(ILEVL)
       IF (IBANGT .LE. 1) THEN
         PRINT 200
-        IFOOD = IFOOD + 52 + INT(RAND() * 6)
-        IAMMU = IAMMU - 10 - INT(RAND() * 4)
-      ELSE IF (100 * RAND() .LT. 13 * IBANGT) THEN
+        IFOOD = IFOOD + 52 + INT(OREGON_RAND() * 6)
+        IAMMU = IAMMU - 10 - INT(OREGON_RAND() * 4)
+      ELSE IF (100 * OREGON_RAND() .LT. 13 * IBANGT) THEN
         PRINT 300
       ELSE
         PRINT 400
@@ -449,7 +449,7 @@ C
       EXTERNAL ARRIVE, BLIZZ, DIE, DOCTOR, EAT, FORT, HUNT, RIDERS
       EXTERNAL SHOP, SICK
       INTEGER  INPUT, SHOOT, SKILL
-      REAL     RAND
+      REAL     OREGON_RAND
 
       CHARACTER*17 ADATEY(20)
       INTEGER      I, IBANGT, IEVNTY(15), ISELEC
@@ -512,19 +512,19 @@ C
         PRINT 160
         CALL DIE()
       END IF
-      ITMIL = ITMIL + 200 + INT((IANIM - 220) / 5 + 10 * RAND())
+      ITMIL = ITMIL + 200 + INT((IANIM - 220) / 5 + 10 * OREGON_RAND())
       R = ((ITMIL/100 - 4)**2 + 72) / ((ITMIL/100 - 4)**2 + 12) - 1
-      IF (RAND() * 10 .LE. R) THEN
+      IF (OREGON_RAND() * 10 .LE. R) THEN
         CALL RIDERS(ILEVL, ITMIL, IANIM, IAMMU, IMISC, IFINJ)
       END IF
       IEVTC = 0
-      R = 100 * RAND()
+      R = 100 * OREGON_RAND()
    20 CONTINUE
       IEVTC = IEVTC + 1
       IF (IEVTC .LT. 16 .AND. R .GT. IEVNTY(IEVTC)) GOTO 20
       IF (IEVTC .EQ. 1) THEN
         PRINT 170
-        ITMIL = ITMIL - 15 - INT(5 * RAND())
+        ITMIL = ITMIL - 15 - INT(5 * OREGON_RAND())
         IMISC = IMISC - 8
       ELSE IF (IEVTC .EQ. 2) THEN
         PRINT 180
@@ -532,8 +532,8 @@ C
         IANIM = IANIM - 20
       ELSE IF (IEVTC .EQ. 3) THEN
         PRINT 190
-        ITMIL = ITMIL - 5 - INT(4 * RAND())
-        IMISC = IMISC - 2 - INT(3 * RAND())
+        ITMIL = ITMIL - 5 - INT(4 * OREGON_RAND())
+        IMISC = IMISC - 2 - INT(3 * OREGON_RAND())
       ELSE IF (IEVTC .EQ. 4) THEN
         PRINT 200
         ITMIL = ITMIL - 17
@@ -542,11 +542,11 @@ C
         ITMIL = ITMIL - 10
       ELSE IF (IEVTC .EQ. 6) THEN
         PRINT 220
-        ITMIL = ITMIL - INT(10 * RAND()) - 2
+        ITMIL = ITMIL - INT(10 * OREGON_RAND()) - 2
       ELSE IF (IEVTC .EQ. 7) THEN
         IF (ITMIL .GT. 950) THEN
           PRINT 230
-          IF (ICLTH .GT. 22 + 4 * RAND()) THEN
+          IF (ICLTH .GT. 22 + 4 * OREGON_RAND()) THEN
             PRINT 240
           ELSE
             PRINT 250
@@ -557,7 +557,7 @@ C
           IFOOD = IFOOD - 10
           IAMMU = IAMMU - 500
           IMISC = IMISC - 15
-          ITMIL = ITMIL - INT(10 * RAND()) - 5
+          ITMIL = ITMIL - INT(10 * OREGON_RAND()) - 5
         END IF
       ELSE IF (IEVTC .EQ. 8) THEN
         PRINT 270
@@ -579,11 +579,11 @@ C
         PRINT 310
         IFOOD = IFOOD - 40
         IAMMU = IAMMU - 400
-        IMISC = IMISC - INT(RAND() * 8) - 3
+        IMISC = IMISC - INT(OREGON_RAND() * 8) - 3
         ITMIL = ITMIL - 15
       ELSE IF (IEVTC .EQ. 10) THEN
         PRINT 320
-        ITMIL = ITMIL - 10 - INT(5 * RAND())
+        ITMIL = ITMIL - 10 - INT(5 * OREGON_RAND())
       ELSE IF (IEVTC .EQ. 11) THEN
         PRINT 330
         IAMMU = IAMMU - 10
@@ -596,7 +596,7 @@ C
         PRINT 350
         IFOOD = IFOOD - 30
         ICLTH = ICLTH - 20
-        ITMIL = ITMIL - 20 - INT(20 * RAND())
+        ITMIL = ITMIL - 20 - INT(20 * OREGON_RAND())
       ELSE IF (IEVTC .EQ. 13) THEN
         PRINT 360
         IF (IAMMU .LE. 39) THEN
@@ -614,13 +614,13 @@ C
         IFOOD = IFOOD - IBANGT * 8
       ELSE IF (IEVTC .EQ. 14) THEN
         PRINT 400
-        ITMIL = ITMIL - 5 - INT(RAND() * 3)
+        ITMIL = ITMIL - 5 - INT(OREGON_RAND() * 3)
         IAMMU = IAMMU - 200
-        IMISC = IMISC - 4 - INT(RAND() * 3)
+        IMISC = IMISC - 4 - INT(OREGON_RAND() * 3)
       ELSE IF (IEVTC .EQ. 15) THEN
         IF ((IEATS .EQ. 1) .OR.
-     &      (IEATS .EQ. 2 .AND. RAND() .GT. 0.25) .OR.
-     &      (IEATS .EQ. 3 .AND. RAND() .LT. 0.5)) THEN
+     &      (IEATS .EQ. 2 .AND. OREGON_RAND() .GT. 0.25) .OR.
+     &      (IEATS .EQ. 3 .AND. OREGON_RAND() .LT. 0.5)) THEN
           CALL SICK(IEATS, ITMIL, IMISC, IFILL, IFINJ)
         END IF
       ELSE IF (IEVTC .EQ. 16) THEN
@@ -629,25 +629,25 @@ C
       END IF
       IF (ITMIL .GT. 950) THEN
         R = 9 - ((ITMIL/100 - 15)**2 / ((ITMIL/100 - 15)**2 + 12))
-        IF (RAND() * 10 .LE. R) THEN
+        IF (OREGON_RAND() * 10 .LE. R) THEN
           PRINT 420
-          IF (RAND() .LE. 0.1) THEN
+          IF (OREGON_RAND() .LE. 0.1) THEN
             PRINT 430
             ITMIL = ITMIL - 60
-          ELSE IF (RAND() .LE. 0.11) THEN
+          ELSE IF (OREGON_RAND() .LE. 0.11) THEN
             PRINT 440
             IMISC = IMISC - 5
             IAMMU = IAMMU - 200
-            ITMIL = ITMIL - 20 - INT(30 * RAND())
+            ITMIL = ITMIL - 20 - INT(30 * OREGON_RAND())
           ELSE
             PRINT 450
-            ITMIL = ITMIL - 45 - INT(RAND() / 0.02)
+            ITMIL = ITMIL - 45 - INT(OREGON_RAND() / 0.02)
           END IF
         END IF
         IF (IFPAS .NE. 1) THEN
           IFPAS = 1
           IF950 = 1
-          IF (RAND() .GE. 0.8) THEN
+          IF (OREGON_RAND() .GE. 0.8) THEN
             PRINT 460
           ELSE
             CALL BLIZZ(ITMIL, IAMMU, ICLTH, IFOOD,
@@ -657,7 +657,7 @@ C
       END IF
       IF (ITMIL .GE. 1700 .AND. IFMOU .NE. 1) THEN
         IFMOU = 1
-        IF (RAND() .GE. 0.7) THEN
+        IF (OREGON_RAND() .GE. 0.7) THEN
           CALL BLIZZ(ITMIL, IAMMU, ICLTH, IFOOD,
      &               IMISC, IFILL, IFINJ, IEATS)
         END IF
@@ -725,19 +725,19 @@ C
 C     RIDERS ATTACK (OR NOT).
 C
       INTEGER INPUT, SHOOT
-      REAL    RAND
+      REAL    OREGON_RAND
       INTEGER ILEVL, ITMIL, IANIM, IAMMU, IMISC, IFINJ
       INTEGER IBANGT, IHORF, ISELEC
 
       IHORF = 0
-      IF (RAND() .LT. 0.8) THEN
+      IF (OREGON_RAND() .LT. 0.8) THEN
         PRINT 100
       ELSE
         PRINT 110
         IHORF = 1
       END IF
       PRINT 120
-      IF (RAND() .LE. 0.2) IHORF = 1 - IHORF
+      IF (OREGON_RAND() .LE. 0.2) IHORF = 1 - IHORF
       ISELEC = INPUT(1, 4)
       IF (ISELEC .EQ. 1) THEN
         IF (IHORF .EQ. 1) THEN
@@ -766,7 +766,7 @@ C
           IFINJ = 1
         END IF
       ELSE IF (ISELEC .EQ. 3) THEN
-        IF (RAND() .GT. 0.8) THEN
+        IF (OREGON_RAND() .GT. 0.8) THEN
           PRINT 160
           RETURN
         END IF
@@ -842,14 +842,15 @@ C     ******************************************************************
 C
 C     ILLNESS EVENTS.
 C
-      REAL    RAND
+      REAL    OREGON_RAND
       INTEGER IEATS, ITMIL, IMISC, IFILL, IFINJ
 
-      IF (100 * RAND() .LT. 10 + 35 * (IEATS - 1)) THEN
+      IF (100 * OREGON_RAND() .LT. 10 + 35 * (IEATS - 1)) THEN
         PRINT 100
         ITMIL = ITMIL - 5
         IMISC = IMISC - 2
-      ELSE IF (100 * RAND() .LT. 100 - (40 / 4**(IEATS - 1))) THEN
+      ELSE IF (100 * OREGON_RAND() .LT.
+     &         100 - (40 / 4**(IEATS - 1))) THEN
         PRINT 200
         ITMIL = ITMIL - 5
         IMISC = IMISC - 5
@@ -880,7 +881,7 @@ C     ******************************************************************
       SUBROUTINE OREGON_SRAND(ISEED)
 C
 C     THIS SUBROUTINE SETS THE INTEGER SEED TO BE USED WITH THE
-C     COMPANION RAND FUNCTION TO THE VALUE OF ISEED. A FLAG IS SET TO
+C     COMPANION OREGON_RAND FUNCTION TO THE VALUE OF ISEED. A FLAG IS SET TO
 C     INDICATE THAT THE SEQUENCE OF PSEUDO-RANDOM NUMBERS FOR THE
 C     SPECIFIED SEED SHOULD START FROM THE BEGINNING.
 C

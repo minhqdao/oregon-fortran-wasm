@@ -3,8 +3,11 @@
 .vscode/
 .idea/
 
+tools/
 build/
 *.mod
 *.out
 *.exe
 oregon
+oregon.js
+oregon.wasm
