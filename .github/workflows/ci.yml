@@ -72,12 +72,3 @@ jobs:
               run: |
                   timeout 5 node oregon.js | tee output.txt || true
                   grep -q "DO YOU NEED INSTRUCTIONS" output.txt
-
-            - name: Check LLVM tools
-              run: |
-                  which llvm-link || true
-                  which llc || true
-                  which wasm-ld || true
-                  llvm-link --version || true
-                  llc --version || true
-                  wasm-ld --version || true
