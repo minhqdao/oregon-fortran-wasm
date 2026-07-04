@@ -8,15 +8,23 @@ The goal of this project is to explore native Fortran-to-WebAssembly compilation
 
 ## Development
 
-### Local Compilation
+### Compile & Run Locally
 
-The original FORTRAN 77 source can be compiled locally using `gfortran`:
+First compile the FORTRAN 77 source code using `gfortran` or `lfortran`:
+
+#### gfortran
 
 ```bash
 gfortran src/oregon.f -o oregon
 ```
 
-Run the resulting executable:
+#### lfortran
+
+```bash
+lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f -o oregon
+```
+
+Then run the resulting executable:
 
 ```bash
 ./oregon

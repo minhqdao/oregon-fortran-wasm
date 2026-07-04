@@ -20,11 +20,11 @@ C     VERSION: 1.1
 C     LICENCE: ISC
 C     ******************************************************************
       PROGRAM OREGON
-      EXTERNAL INSTR, PLAY, SRAND
+      EXTERNAL INSTR, PLAY, OREGON_SRAND
       INTEGER  TIME
       LOGICAL  ASK
 
-      CALL SRAND(TIME())
+      CALL OREGON_SRAND(TIME())
       PRINT 100
       IF (ASK()) CALL INSTR()
       CALL PLAY()
@@ -877,7 +877,7 @@ C
   600 FORMAT (1X,'YOU DIED OF PNEUMONIA.')
       END
 C     ******************************************************************
-      SUBROUTINE SRAND(ISEED)
+      SUBROUTINE OREGON_SRAND(ISEED)
 C
 C     THIS SUBROUTINE SETS THE INTEGER SEED TO BE USED WITH THE
 C     COMPANION RAND FUNCTION TO THE VALUE OF ISEED. A FLAG IS SET TO
