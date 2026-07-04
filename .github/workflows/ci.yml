@@ -1,0 +1,49 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                compiler:
+                    - gfortran
+                    - lfortran
+                    - flang
+
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup Fortran
+              uses: minhqdao/setup-fortran@v1
+              with:
+                  compiler: ${{ matrix.compiler }}
+
+            - name: Build (gfortran)
+              if: matrix.compiler == 'gfortran'
+              run: gfortran src/oregon.f -o oregon
+
+            - name: Build (lfortran)
+              if: matrix.compiler == 'lfortran'
+              run: |
+                  lfortran \
+                    --fixed-form \
+                    --implicit-interface \
+                    --implicit-typing \
+                    src/oregon.f \
+                    -o oregon
+
+            - name: Build (flang)
+              if: matrix.compiler == 'flang'
+              run: flang -ffixed-form src/oregon.f -o oregon
+
+            - name: Smoke test
+              run: |
+                  printf "N\n" | timeout 5 ./oregon > output.txt || true
+                  grep -q "DO YOU NEED INSTRUCTIONS" output.txt
