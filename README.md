@@ -38,6 +38,4 @@ Start the game by running the executable:
 
 ## WebAssembly Build
 
-WebAssembly artifacts are built automatically in the [CI pipeline](.github/workflows/ci.yml) to ensure reproducible builds and consistent toolchain configurations.
-
-The current implementation targets native Fortran-to-WebAssembly compilation using LFortran and Emscripten.
+WebAssembly artifacts are built automatically in the [CI pipeline](.github/workflows/ci.yml) to ensure reproducible builds and consistent toolchain configurations. The currently working WASM build uses LFortran and Emscripten.
