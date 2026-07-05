@@ -44,7 +44,8 @@ C
 
       ASK = .FALSE.
       READ (*, 100, IOSTAT=ISTAT) A
-      IF (ISTAT .NE. 0) RETURN
+      IF (ISTAT .LT. 0) STOP
+      IF (ISTAT .GT. 0) RETURN
       CALL UPPER(A)
       IF (A .EQ. 'STOP') STOP
       IF (A .NE. 'Y') RETURN
@@ -64,9 +65,10 @@ C
 
    10 CONTINUE
       READ (*, 100, IOSTAT=ISTAT) A
-      IF (ISTAT .NE. 0) THEN
-        PRINT 200
-        GOTO 10
+      IF (ISTAT .LT. 0) STOP
+      IF (ISTAT .GT. 0) THEN
+          PRINT 200
+          GOTO 10
       END IF
       CALL UPPER(A)
       IF (A .EQ. 'STOP') STOP
