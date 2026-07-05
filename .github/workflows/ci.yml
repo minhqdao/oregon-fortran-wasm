@@ -54,8 +54,6 @@ jobs:
 
             - name: Setup Emscripten
               uses: emscripten-core/setup-emsdk@v16
-              with:
-                  version: 5.0.7
 
             - name: Build WebAssembly
               env:
