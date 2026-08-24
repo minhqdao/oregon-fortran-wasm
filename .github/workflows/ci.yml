@@ -39,8 +39,9 @@ jobs:
 
             - name: Smoke test
               run: |
-                  printf "N\n" | timeout 5 ./oregon | tee output.txt
-                  grep -q "DO YOU NEED INSTRUCTIONS" output.txt
+                  printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 ./oregon | tee output.txt
+                  grep -q "HOW GOOD A SHOT" output.txt
+                  ! grep -q "INVALID" output.txt
 
     build-wasm:
         runs-on: ubuntu-latest
@@ -70,5 +71,6 @@ jobs:
 
             - name: WASM smoke test
               run: |
-                  timeout 5 node oregon.js | tee output.txt || true
-                  grep -q "DO YOU NEED INSTRUCTIONS" output.txt
+                  printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 node oregon.js | tee output.txt
+                  grep -q "HOW GOOD A SHOT" output.txt
+                  ! grep -q "INVALID" output.txt
