@@ -125,9 +125,9 @@ def build_wagon():
     """A 32x32 retro pixel-art wild-west covered wagon facing right.
 
     Layout (side view, matching the reference icon):
-        canvas cover (y  4..14)  flared trapezoid, wavy scalloped top edge
-        gap          (y 15)      background row separating cover and bed
-        wagon bed    (y 16..21)  solid bar, arch cut-outs over the wheels,
+        canvas cover (y  4..15)  flared trapezoid, wavy scalloped top edge
+        gap          (y 16)      background row separating cover and bed
+        wagon bed    (y 17..21)  solid bar, arch cut-outs over the wheels,
                                  tongue stub at the bottom right
         wheels       (y 20..30)  spoked wheels; front (right) slightly
                                  smaller but sitting one row lower, so both
@@ -136,7 +136,7 @@ def build_wagon():
     g = new_grid()
 
     # --- Canvas cover: wider at the top, wavy scalloped roof -------------
-    top_y, bot_y = 4, 14
+    top_y, bot_y = 4, 15  # one row taller -> gap moves down
     peaks = (3, 12, 20, 29)  # x positions of the scallop points
 
     def top_edge(x):
@@ -165,7 +165,7 @@ def build_wagon():
         disk(g, cx, cy, 1)  # hub cap
 
     # --- Wagon bed: solid bar with arch cut-outs over the wheels ---------
-    bed_top, bed_bot = 16, 21
+    bed_top, bed_bot = 17, 21  # starts one row lower (gap at 16)
     for y in range(bed_top, bed_bot + 1):
         for x in range(5, 28):
             if math.hypot(x - back_cx, y - back_cy) <= back_r + 1:
