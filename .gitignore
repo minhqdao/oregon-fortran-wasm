@@ -3,6 +3,10 @@
 .vscode/
 .idea/
 
+# Local reference copy of the Basicade project (has its own repository).
+Basicade/
+
+
 tools/
 build/
 *.mod
