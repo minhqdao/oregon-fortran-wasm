@@ -140,11 +140,11 @@ def build_wagon():
     hline(g, 12, 20, bed_bot)              # bed bottom edge (on the hubs)
 
     # --- Canvas cover (classic Conestoga arch, peak toward the rear) -----
-    roof_cx, roof_cy, roof_r = 16, 17, 7
-    fill_circle_upper(g, roof_cx, roof_cy, roof_r, clip=(11, 21))
-    front_board_x, rear_curtain_x = 20, 12
-    vline(g, front_board_x, roof_cy - roof_r, roof_cy)     # front board
-    vline(g, rear_curtain_x, roof_cy - roof_r, roof_cy)    # rear curtain
+    roof_cx, roof_cy, roof_r = 16, 16, 9
+    fill_circle_upper(g, roof_cx, roof_cy, roof_r, clip=(9, 23))
+    front_board_x, rear_curtain_x = 22, 10
+    vline(g, front_board_x, roof_cy - roof_r, 17)     # front board
+    vline(g, rear_curtain_x, roof_cy - roof_r, 17)    # rear curtain
 
     return g
 
