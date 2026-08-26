@@ -8,11 +8,15 @@ The artwork is authored once as a 32x32 pixel grid and then derived, via
 nearest-neighbour sampling, into:
 
   web/favicon.svg          self-contained pixel-grid SVG (crispEdges)
-  web/favicon.ico          16/32/48 px multi-resolution ICO (legacy browsers)
+  web/favicon.ico          16/32/64 px multi-resolution ICO (legacy browsers)
   web/favicon-16.png       16x16  PNG
   web/favicon-32.png       32x32  PNG
-  web/favicon-48.png       48x48  PNG
+  web/favicon-64.png       64x64  PNG
   web/apple-touch-icon.png 180x180 PNG
+
+The raster sizes are all integer multiples or divisors of 32 on purpose:
+nearest-neighbour sampling at a fractional scale (e.g. 32 -> 48) duplicates
+every even row/column, which swells single-pixel spokes into uneven 2px bars.
 
 No third-party libraries are required: PNGs are encoded with the standard
 library only (zlib + struct).
@@ -286,16 +290,16 @@ def main():
     (WEB / "favicon.svg").write_text(grid_to_svg(grid), encoding="utf-8")
 
     # ICO for legacy browsers/tools that cannot deal with SVG favicons.
-    ico_grids = [(scale(grid, n, n), n, n) for n in (16, 32, 48)]
+    ico_grids = [(scale(grid, n, n), n, n) for n in (16, 32, 64)]
     ico = grid_to_ico_bytes(ico_grids)
     (WEB / "favicon.ico").write_bytes(ico)
-    print("wrote web/favicon.ico (16/32/48, %d bytes)" % len(ico))
+    print("wrote web/favicon.ico (16/32/64, %d bytes)" % len(ico))
 
     # PNGs at every size browsers ask for, nearest-neighbour (no blur).
     targets = (
         (16, "favicon-16.png"),
         (32, "favicon-32.png"),
-        (48, "favicon-48.png"),
+        (64, "favicon-64.png"),
         (180, "apple-touch-icon.png"),
     )
     for n, name in targets:
