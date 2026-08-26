@@ -43,6 +43,14 @@ jobs:
                   grep -q "HOW GOOD A SHOT" output.txt
                   ! grep -q "INVALID" output.txt
 
+            - name: Smoke test (STOP quits)
+              run: |
+                  printf "STOP\n" | timeout 10 ./oregon | tee stop_output.txt
+                  ! grep -q "HOW GOOD A SHOT" stop_output.txt
+                  printf "N\nSTOP\n" | timeout 10 ./oregon | tee stop_mid_output.txt
+                  grep -q "HOW GOOD A SHOT" stop_mid_output.txt
+                  ! grep -q "INVALID" stop_mid_output.txt
+
     build-wasm:
         runs-on: ubuntu-latest
         steps:
@@ -74,3 +82,11 @@ jobs:
                   printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 node oregon.js | tee output.txt
                   grep -q "HOW GOOD A SHOT" output.txt
                   ! grep -q "INVALID" output.txt
+
+            - name: WASM smoke test (STOP quits)
+              run: |
+                  printf "STOP\n" | timeout 10 node oregon.js | tee stop_output.txt
+                  ! grep -q "HOW GOOD A SHOT" stop_output.txt
+                  printf "N\nSTOP\n" | timeout 10 node oregon.js | tee stop_mid_output.txt
+                  grep -q "HOW GOOD A SHOT" stop_mid_output.txt
+                  ! grep -q "INVALID" stop_mid_output.txt
