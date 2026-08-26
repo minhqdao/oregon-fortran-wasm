@@ -6,7 +6,7 @@ This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 vers
 
 The goal of this project is to explore native Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang.
 
-## Local Build
+## Native Build
 
 Make sure either `gfortran`, `lfortran`, or `flang` are installed on your system. Other compilers may work as well but have not been tested.
 
@@ -38,14 +38,16 @@ Start the game by running the executable:
 
 ## WebAssembly Build
 
-The currently working WASM build uses LFortran and Emscripten.
-
-To build locally, run:
+The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/). Install LFortran (e.g. with `conda install -c conda-forge lfortran`) and Emscripten, and make sure `lfortran` and `emcc` are on your `PATH`. The build is known to work with LFortran 0.64.0 and Emscripten 6.0.8, but other recent versions should work as well.
 
 ```bash
 scripts/build-web.sh
 ```
 
-The script looks for `lfortran` and `emcc` in `tools/` and on your `PATH` (overrides: `LFORTRAN`, `EMCC`). If neither is found, it provisions pinned toolchain versions into `tools/` on the first run: LFortran 0.64.0, installed from conda-forge via micromamba (LFortran publishes no binary releases), and Emscripten 6.0.8, via the emsdk repository. Provisioning requires `git`, `python3`, `curl`, `tar`, and `bzip2`.
+The script compiles the FORTRAN sources with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`.
 
-The build emits `web/oregon.js` and `web/oregon.wasm`.
+Then run the game with [Node.js](https://nodejs.org/en/download/):
+
+```
+node scripts/dev-server.mjs 8080
+```
