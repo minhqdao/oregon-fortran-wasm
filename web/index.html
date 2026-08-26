@@ -136,6 +136,23 @@
         gap: 8px;
         margin-top: 12px;
       }
+      .terminal-actions a {
+        align-items: center;
+        display: inline-flex;
+        -webkit-appearance: none;
+        appearance: none;
+        border: 1px solid rgba(200, 248, 200, 0.25);
+        border-radius: 6px;
+        color: rgba(200, 248, 200, 0.65);
+        justify-content: center;
+        outline: 0;
+        padding: 0 10px;
+        text-decoration: none;
+        transition:
+          background-color 0.18s ease-out,
+          border-color 0.18s ease-out,
+          color 0.18s ease-out;
+      }
       button {
         --button-transition: 0.18s ease-out;
         -webkit-appearance: none;
@@ -164,9 +181,21 @@
           color: #c8f8c8;
           text-shadow: 0 0 5px rgba(200, 248, 200, 0.5);
         }
+        .terminal-actions a:hover,
+        .terminal-actions a:focus-visible {
+          background: rgba(200, 248, 200, 0.04);
+          border-color: rgba(200, 248, 200, 0.7);
+          color: #c8f8c8;
+        }
       }
       @media (hover: none) {
         button:active {
+          background: rgba(200, 248, 200, 0.04);
+          border-color: rgba(200, 248, 200, 0.7);
+          color: #c8f8c8;
+          transition-duration: 0s;
+        }
+        .terminal-actions a:active {
           background: rgba(200, 248, 200, 0.04);
           border-color: rgba(200, 248, 200, 0.7);
           color: #c8f8c8;
