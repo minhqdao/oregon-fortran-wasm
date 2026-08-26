@@ -114,37 +114,79 @@ def fill_circle_upper(g, cx, cy, r, clip=None, v=1):
 
 
 def build_wagon():
-    """A 32x32 retro pixel-art covered wagon (Conestoga cart) facing right.
+    """A 32x32 retro pixel-art wild west covered wagon matching the reference icon.
 
-    Layout (side view, wheels on the bottom):
-        cover arch  (y 10..17)  <- semicircle canvas roof, peak near the rear
-        wagon bed   (y 17..18)  <- thin platform resting on the wheel hubs
-        wheels        (y 18..30) <- two big spoked wheels on axles
+    Layout (32x32 grid):
+        - Scalloped canopy roof with a 3-wave top hem (y=4..14)
+        - Blank horizontal separation gap (y=15)
+        - Solid wooden wagon bed with right-side hitch tab (y=16..20)
+        - Spoked wheels: larger rear wheel (r=5) and slightly smaller front wheel (r=4)
     """
     g = new_grid()
 
-    back_cx, front_cx, cy, r = 8, 22, 24, 6
+    # --- 1. Scalloped Canopy Cover ---------------------------------------
+    # Defines the scalloped top edge (3 waves / 4 peaks) from the reference image
+    top_edge = {
+        3: 4,
+        4: 5,
+        5: 6,
+        6: 6,
+        7: 6,
+        8: 5,
+        9: 4,
+        10: 4,
+        11: 4,
+        12: 5,
+        13: 6,
+        14: 6,
+        15: 6,
+        16: 5,
+        17: 4,
+        18: 4,
+        19: 4,
+        20: 5,
+        21: 6,
+        22: 6,
+        23: 6,
+        24: 5,
+        25: 4,
+        26: 4,
+        27: 4,
+        28: 4,
+    }
 
-    # --- Wheels (big, spoked, very Oregon Trail) -------------------------
-    for cx in (back_cx, front_cx):
-        ring(g, cx, cy, r)                 # outer tyre
-        for ang in range(0, 360, 45):      # eight thin spokes
-            a = math.radians(ang)
-            ex, ey = round(math.cos(a) * r), round(math.sin(a) * r)
-            line(g, cx, cy, cx + ex, cy + ey)
-        disk(g, cx, cy, 1)                 # hub cap
+    # Fill solid canopy body from the wavy top line down to y = 14
+    for x, top_y in top_edge.items():
+        vline(g, x, top_y, 14)
 
-    # --- Wagon bed (resting on top of the wheel hubs) --------------------
-    bed_top, bed_bot = 17, 18
-    hline(g, 13, 19, bed_top)              # bed top edge
-    hline(g, 12, 20, bed_bot)              # bed bottom edge (on the hubs)
+    # Note: Row y = 15 is left empty to create the distinct gap seen in the reference silhouette.
 
-    # --- Canvas cover (classic Conestoga arch, peak toward the rear) -----
-    roof_cx, roof_cy, roof_r = 16, 16, 9
-    fill_circle_upper(g, roof_cx, roof_cy, roof_r, clip=(9, 23))
-    front_board_x, rear_curtain_x = 22, 10
-    vline(g, front_board_x, roof_cy - roof_r, 17)     # front board
-    vline(g, rear_curtain_x, roof_cy - roof_r, 17)    # rear curtain
+    # --- 2. Wagon Bed Frame & Body ---------------------------------------
+    for y in range(16, 20):
+        hline(g, 5, 26, y)
+
+    # Tow hitch / tongue extending to the right
+    px(g, 27, 20)
+    px(g, 28, 20)
+
+    # --- 3. Wheels & Spokes ----------------------------------------------
+    # Rear wheel (larger, radius 5, center x=9, y=23)
+    rear_cx, rear_cy, rear_r = 9, 23, 5
+    ring(g, rear_cx, rear_cy, rear_r)
+    for ang in range(0, 360, 45):
+        a = math.radians(ang)
+        ex, ey = round(math.cos(a) * rear_r), round(math.sin(a) * rear_r)
+        line(g, rear_cx, rear_cy, rear_cx + ex, rear_cy + ey)
+    disk(g, rear_cx, rear_cy, 1)
+
+    # Front wheel (slightly smaller, radius 4, center x=23, y=24)
+    front_cx, front_cy, front_r = 23, 24, 4
+    ring(g, front_cx, front_cy, front_r)
+    for ang in range(0, 360, 45):
+        a = math.radians(ang)
+        ex, ey = round(math.cos(a) * front_r), round(math.sin(a) * front_r)
+        line(g, front_cx, front_cy, front_cx + ex, front_cy + ey)
+    disk(g, front_cx, front_cy, 1)
 
     return g
 
