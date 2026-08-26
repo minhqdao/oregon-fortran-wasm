@@ -81,8 +81,16 @@ def ring(g, cx, cy, r, v=1):
     y = 0
     err = 0
     while x >= y:
-        for dx, dy in ((x, y), (y, x), (-x, y), (-y, x),
-                       (x, -y), (y, -x), (-x, -y), (-y, -x)):
+        for dx, dy in (
+            (x, y),
+            (y, x),
+            (-x, y),
+            (-y, x),
+            (x, -y),
+            (y, -x),
+            (-x, -y),
+            (-y, -x),
+        ):
             px(g, cx + dx, cy + dy, v)
         if err <= 0:
             y += 1
@@ -121,7 +129,9 @@ def build_wagon():
         gap          (y 15)      background row separating cover and bed
         wagon bed    (y 16..21)  solid bar, arch cut-outs over the wheels,
                                  tongue stub at the bottom right
-        wheels       (y 20..30)  spoked wheels; front (right) slightly smaller
+        wheels       (y 20..30)  spoked wheels; front (right) slightly
+                                 smaller but sitting one row lower, so both
+                                 tyres touch the same floor line (y = 30)
     """
     g = new_grid()
 
@@ -143,25 +153,24 @@ def build_wagon():
             if y >= top_edge(x):
                 px(g, x, y)
 
-    # --- Wheels: same spoked style, right (front) one slightly smaller ---
-    back_cx, back_r = 9, 5
-    front_cx, front_r = 22, 4
-    wcy = 25
-    for cx, r in ((back_cx, back_r), (front_cx, front_r)):
-        ring(g, cx, wcy, r)  # outer tyre
+    # --- Wheels: same spoked style; front smaller *and* one row lower ----
+    back_cx, back_cy, back_r = 9, 25, 5
+    front_cx, front_cy, front_r = 22, 26, 4  # 26+4 == 25+5 == 30 -> common floor
+    for cx, cy, r in ((back_cx, back_cy, back_r), (front_cx, front_cy, front_r)):
+        ring(g, cx, cy, r)  # outer tyre
         for ang in range(0, 360, 45):  # eight thin spokes
             a = math.radians(ang)
             ex, ey = round(math.cos(a) * r), round(math.sin(a) * r)
-            line(g, cx, wcy, cx + ex, wcy + ey)
-        disk(g, cx, wcy, 1)  # hub cap
+            line(g, cx, cy, cx + ex, cy + ey)
+        disk(g, cx, cy, 1)  # hub cap
 
     # --- Wagon bed: solid bar with arch cut-outs over the wheels ---------
     bed_top, bed_bot = 16, 21
     for y in range(bed_top, bed_bot + 1):
         for x in range(5, 28):
-            if math.hypot(x - back_cx, y - wcy) <= back_r + 1:
+            if math.hypot(x - back_cx, y - back_cy) <= back_r + 1:
                 continue  # arch over the back wheel
-            if math.hypot(x - front_cx, y - wcy) <= front_r + 1:
+            if math.hypot(x - front_cx, y - front_cy) <= front_r + 1:
                 continue  # arch over the front wheel
             px(g, x, y)
     hline(g, 28, 29, bed_bot)  # tongue stub at the bottom right
@@ -196,8 +205,12 @@ def grid_to_png_bytes(grid, w, h):
     compressed = zlib.compress(bytes(raw), 9)
 
     def chunk(typ, data):
-        return (struct.pack(">I", len(data)) + typ + data +
-                struct.pack(">I", zlib.crc32(typ + data) & 0xFFFFFFFF))
+        return (
+            struct.pack(">I", len(data))
+            + typ
+            + data
+            + struct.pack(">I", zlib.crc32(typ + data) & 0xFFFFFFFF)
+        )
 
     sig = b"\x89PNG\r\n\x1a\n"
     ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)  # 8-bit, truecolour RGB
@@ -211,8 +224,7 @@ def grid_to_svg(grid, size=SIZE):
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" '
         'shape-rendering="crispEdges">' % (size, size),
-        '  <rect width="%d" height="%d" fill="#%02x%02x%02x"/>'
-        % (size, size, *BG),
+        '  <rect width="%d" height="%d" fill="#%02x%02x%02x"/>' % (size, size, *BG),
     ]
     gx = GREEN
     for y in range(size):
@@ -222,11 +234,13 @@ def grid_to_svg(grid, size=SIZE):
                 x0 = x
                 while x < size and grid[y][x]:
                     x += 1
-                parts.append('  <rect x="%d" y="%d" width="%d" height="1" '
-                             'fill="#%02x%02x%02x"/>' % (x0, y, x - x0, *gx))
+                parts.append(
+                    '  <rect x="%d" y="%d" width="%d" height="1" '
+                    'fill="#%02x%02x%02x"/>' % (x0, y, x - x0, *gx)
+                )
             else:
                 x += 1
-    parts.append('</svg>')
+    parts.append("</svg>")
     return "\n".join(parts) + "\n"
 
 
@@ -247,8 +261,12 @@ def main():
     (WEB / "favicon.svg").write_text(grid_to_svg(grid), encoding="utf-8")
 
     # PNGs at every size browsers ask for, nearest-neighbour (no blur).
-    targets = ((16, "favicon-16.png"), (32, "favicon-32.png"),
-               (48, "favicon-48.png"), (180, "apple-touch-icon.png"))
+    targets = (
+        (16, "favicon-16.png"),
+        (32, "favicon-32.png"),
+        (48, "favicon-48.png"),
+        (180, "apple-touch-icon.png"),
+    )
     for n, name in targets:
         scaled = scale(grid, n, n)
         png = grid_to_png_bytes(scaled, n, n)
