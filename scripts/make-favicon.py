@@ -114,79 +114,57 @@ def fill_circle_upper(g, cx, cy, r, clip=None, v=1):
 
 
 def build_wagon():
-    """A 32x32 retro pixel-art wild west covered wagon matching the reference icon.
+    """A 32x32 retro pixel-art wild-west covered wagon facing right.
 
-    Layout (32x32 grid):
-        - Scalloped canopy roof with a 3-wave top hem (y=4..14)
-        - Blank horizontal separation gap (y=15)
-        - Solid wooden wagon bed with right-side hitch tab (y=16..20)
-        - Spoked wheels: larger rear wheel (r=5) and slightly smaller front wheel (r=4)
+    Layout (side view, matching the reference icon):
+        canvas cover (y  4..14)  flared trapezoid, wavy scalloped top edge
+        gap          (y 15)      background row separating cover and bed
+        wagon bed    (y 16..21)  solid bar, arch cut-outs over the wheels,
+                                 tongue stub at the bottom right
+        wheels       (y 20..30)  spoked wheels; front (right) slightly smaller
     """
     g = new_grid()
 
-    # --- 1. Scalloped Canopy Cover ---------------------------------------
-    # Defines the scalloped top edge (3 waves / 4 peaks) from the reference image
-    top_edge = {
-        3: 4,
-        4: 5,
-        5: 6,
-        6: 6,
-        7: 6,
-        8: 5,
-        9: 4,
-        10: 4,
-        11: 4,
-        12: 5,
-        13: 6,
-        14: 6,
-        15: 6,
-        16: 5,
-        17: 4,
-        18: 4,
-        19: 4,
-        20: 5,
-        21: 6,
-        22: 6,
-        23: 6,
-        24: 5,
-        25: 4,
-        26: 4,
-        27: 4,
-        28: 4,
-    }
+    # --- Canvas cover: wider at the top, wavy scalloped roof -------------
+    top_y, bot_y = 4, 14
+    peaks = (3, 12, 20, 29)  # x positions of the scallop points
 
-    # Fill solid canopy body from the wavy top line down to y = 14
-    for x, top_y in top_edge.items():
-        vline(g, x, top_y, 14)
+    def top_edge(x):
+        for a, b in zip(peaks, peaks[1:]):  # three concave dips between peaks
+            if a <= x <= b:
+                mid, half = (a + b) / 2.0, (b - a) / 2.0
+                return top_y + round(2 * (1 - ((x - mid) / half) ** 2))
+        return top_y
 
-    # Note: Row y = 15 is left empty to create the distinct gap seen in the reference silhouette.
+    for y in range(top_y, bot_y + 1):
+        xl = round(3 + (y - top_y) * 0.2)  # sides slant inwards going down
+        xr = round(29 - (y - top_y) * 0.2)
+        for x in range(xl, xr + 1):
+            if y >= top_edge(x):
+                px(g, x, y)
 
-    # --- 2. Wagon Bed Frame & Body ---------------------------------------
-    for y in range(16, 20):
-        hline(g, 5, 26, y)
+    # --- Wheels: same spoked style, right (front) one slightly smaller ---
+    back_cx, back_r = 9, 5
+    front_cx, front_r = 22, 4
+    wcy = 25
+    for cx, r in ((back_cx, back_r), (front_cx, front_r)):
+        ring(g, cx, wcy, r)  # outer tyre
+        for ang in range(0, 360, 45):  # eight thin spokes
+            a = math.radians(ang)
+            ex, ey = round(math.cos(a) * r), round(math.sin(a) * r)
+            line(g, cx, wcy, cx + ex, wcy + ey)
+        disk(g, cx, wcy, 1)  # hub cap
 
-    # Tow hitch / tongue extending to the right
-    px(g, 27, 20)
-    px(g, 28, 20)
-
-    # --- 3. Wheels & Spokes ----------------------------------------------
-    # Rear wheel (larger, radius 5, center x=9, y=23)
-    rear_cx, rear_cy, rear_r = 9, 23, 5
-    ring(g, rear_cx, rear_cy, rear_r)
-    for ang in range(0, 360, 45):
-        a = math.radians(ang)
-        ex, ey = round(math.cos(a) * rear_r), round(math.sin(a) * rear_r)
-        line(g, rear_cx, rear_cy, rear_cx + ex, rear_cy + ey)
-    disk(g, rear_cx, rear_cy, 1)
-
-    # Front wheel (slightly smaller, radius 4, center x=23, y=24)
-    front_cx, front_cy, front_r = 23, 24, 4
-    ring(g, front_cx, front_cy, front_r)
-    for ang in range(0, 360, 45):
-        a = math.radians(ang)
-        ex, ey = round(math.cos(a) * front_r), round(math.sin(a) * front_r)
-        line(g, front_cx, front_cy, front_cx + ex, front_cy + ey)
-    disk(g, front_cx, front_cy, 1)
+    # --- Wagon bed: solid bar with arch cut-outs over the wheels ---------
+    bed_top, bed_bot = 16, 21
+    for y in range(bed_top, bed_bot + 1):
+        for x in range(5, 28):
+            if math.hypot(x - back_cx, y - wcy) <= back_r + 1:
+                continue  # arch over the back wheel
+            if math.hypot(x - front_cx, y - wcy) <= front_r + 1:
+                continue  # arch over the front wheel
+            px(g, x, y)
+    hline(g, 28, 29, bed_bot)  # tongue stub at the bottom right
 
     return g
 
