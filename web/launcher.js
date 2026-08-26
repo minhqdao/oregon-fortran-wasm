@@ -33,6 +33,7 @@ const wasmUrl = new URL("./oregon.js", import.meta.url).href;
 let terminalText = "LOADING...\n";
 let currentInput = "";
 let waitingForInput = false;
+let pendingInputSeparator = false;
 let hasReceivedFirstOutput = false;
 let isCursorActive = false;
 let worker;
@@ -47,6 +48,14 @@ function appendOutput(text) {
     terminalText = "";
     hasReceivedFirstOutput = true;
   }
+
+  // Visually separate user input from the game's answer with a blank line.
+  // Output that already starts with one (a leading "/" in the FORTRAN
+  // format, e.g. the MONDAY turn header) provides the separator itself.
+  if (pendingInputSeparator && !text.startsWith("\n")) {
+    terminalText += "\n";
+  }
+  pendingInputSeparator = false;
 
   const atLineStart = terminalText === "" || terminalText.endsWith("\n");
   terminalText += stripLineLeadingSpace(
@@ -124,6 +133,7 @@ function releaseWorker() {
 function submitInput() {
   const value = `${currentInput}\n`;
   terminalText += value;
+  pendingInputSeparator = true;
   currentInput = "";
   terminalInput.value = "";
   waitingForInput = false;
@@ -536,6 +546,7 @@ function reportStartError(error) {
   setStatus(error.message);
   terminalText = "";
   hasReceivedFirstOutput = false;
+  pendingInputSeparator = false;
   render();
 }
 
@@ -547,6 +558,7 @@ function restartGame() {
   hasReceivedFirstOutput = false;
   currentInput = "";
   waitingForInput = false;
+  pendingInputSeparator = false;
   setStatus("");
   render();
   screen.scrollTop = 0;
