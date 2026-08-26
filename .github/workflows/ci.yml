@@ -1,92 +1,92 @@
 name: CI
 
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                compiler:
-                    - gfortran
-                    - lfortran
-                    - flang
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gfortran
+          - lfortran
+          - flang
 
-        steps:
-            - uses: actions/checkout@v7
+    steps:
+      - uses: actions/checkout@v7
 
-            - name: Setup Fortran
-              uses: minhqdao/setup-fortran@v1
-              with:
-                  compiler: ${{ matrix.compiler }}
+      - name: Setup Fortran
+        uses: minhqdao/setup-fortran@v1
+        with:
+          compiler: ${{ matrix.compiler }}
 
-            - name: Build (gfortran)
-              if: matrix.compiler == 'gfortran'
-              run: gfortran src/oregon.f src/oregon_time.f -o oregon
+      - name: Build (gfortran)
+        if: matrix.compiler == 'gfortran'
+        run: gfortran src/oregon.f src/oregon_time.f -o oregon
 
-            - name: Build (lfortran)
-              if: matrix.compiler == 'lfortran'
-              run: lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f src/oregon_time.f -o oregon
+      - name: Build (lfortran)
+        if: matrix.compiler == 'lfortran'
+        run: lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f src/oregon_time.f -o oregon
 
-            - name: Build (flang)
-              if: matrix.compiler == 'flang'
-              run: flang src/oregon.f src/oregon_time.f -o oregon
+      - name: Build (flang)
+        if: matrix.compiler == 'flang'
+        run: flang src/oregon.f src/oregon_time.f -o oregon
 
-            - name: Smoke test
-              run: |
-                  printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 ./oregon | tee output.txt
-                  grep -q "HOW GOOD A SHOT" output.txt
-                  ! grep -q "INVALID" output.txt
+      - name: Smoke test
+        run: |
+          printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 ./oregon | tee output.txt
+          grep -q "HOW GOOD A SHOT" output.txt
+          ! grep -q "INVALID" output.txt
 
-            - name: Smoke test (STOP quits)
-              run: |
-                  printf "STOP\n" | timeout 10 ./oregon | tee stop_output.txt
-                  ! grep -q "HOW GOOD A SHOT" stop_output.txt
-                  printf "N\nSTOP\n" | timeout 10 ./oregon | tee stop_mid_output.txt
-                  grep -q "HOW GOOD A SHOT" stop_mid_output.txt
-                  ! grep -q "INVALID" stop_mid_output.txt
+      - name: Smoke test (STOP quits)
+        run: |
+          printf "STOP\n" | timeout 10 ./oregon | tee stop_output.txt
+          ! grep -q "HOW GOOD A SHOT" stop_output.txt
+          printf "N\nSTOP\n" | timeout 10 ./oregon | tee stop_mid_output.txt
+          grep -q "HOW GOOD A SHOT" stop_mid_output.txt
+          ! grep -q "INVALID" stop_mid_output.txt
 
-    build-wasm:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v7
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
-            - name: Setup LFortran
-              uses: minhqdao/setup-fortran@v1
-              with:
-                  compiler: lfortran
+      - name: Setup LFortran
+        uses: minhqdao/setup-fortran@v1
+        with:
+          compiler: lfortran
 
-            - name: Setup Emscripten
-              uses: emscripten-core/setup-emsdk@v16
+      - name: Setup Emscripten
+        uses: emscripten-core/setup-emsdk@v16
 
-            - name: Build WebAssembly
-              env:
-                  EMSDK_PATH: ${{ env.EMSDK }}
-              run: |
-                  lfortran \
-                    --fixed-form \
-                    --implicit-interface \
-                    --implicit-typing \
-                    --target=wasm32-unknown-emscripten \
-                    src/oregon.f \
-                    src/oregon_time.f \
-                    -o oregon.js
+      - name: Build WebAssembly
+        env:
+          EMSDK_PATH: ${{ env.EMSDK }}
+        run: |
+          lfortran \
+            --fixed-form \
+            --implicit-interface \
+            --implicit-typing \
+            --target=wasm32-unknown-emscripten \
+            src/oregon.f \
+            src/oregon_time.f \
+            -o oregon.js
 
-            - name: WASM smoke test
-              run: |
-                  printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 node oregon.js | tee output.txt
-                  grep -q "HOW GOOD A SHOT" output.txt
-                  ! grep -q "INVALID" output.txt
+      - name: WASM smoke test
+        run: |
+          printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 node oregon.js | tee output.txt
+          grep -q "HOW GOOD A SHOT" output.txt
+          ! grep -q "INVALID" output.txt
 
-            - name: WASM smoke test (STOP quits)
-              run: |
-                  printf "STOP\n" | timeout 10 node oregon.js | tee stop_output.txt
-                  ! grep -q "HOW GOOD A SHOT" stop_output.txt
-                  printf "N\nSTOP\n" | timeout 10 node oregon.js | tee stop_mid_output.txt
-                  grep -q "HOW GOOD A SHOT" stop_mid_output.txt
-                  ! grep -q "INVALID" stop_mid_output.txt
+      - name: WASM smoke test (STOP quits)
+        run: |
+          printf "STOP\n" | timeout 10 node oregon.js | tee stop_output.txt
+          ! grep -q "HOW GOOD A SHOT" stop_output.txt
+          printf "N\nSTOP\n" | timeout 10 node oregon.js | tee stop_mid_output.txt
+          grep -q "HOW GOOD A SHOT" stop_mid_output.txt
+          ! grep -q "INVALID" stop_mid_output.txt
