@@ -8,6 +8,7 @@ The artwork is authored once as a 32x32 pixel grid and then derived, via
 nearest-neighbour sampling, into:
 
   web/favicon.svg          self-contained pixel-grid SVG (crispEdges)
+  web/favicon.ico          16/32/48 px multi-resolution ICO (legacy browsers)
   web/favicon-16.png       16x16  PNG
   web/favicon-32.png       32x32  PNG
   web/favicon-48.png       48x48  PNG
@@ -217,6 +218,30 @@ def grid_to_png_bytes(grid, w, h):
     return sig + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
 
 
+def grid_to_ico_bytes(grids):
+    """Multi-resolution ICO, one 32-bpp BMP entry per size (full legacy
+    compatibility; no PNG compression inside the ICO)."""
+    images = []
+    for grid, w, h in grids:
+        pixels = bytearray()  # BGRA, bottom-up
+        for y in range(h - 1, -1, -1):
+            for x in range(w):
+                r, g, b = GREEN if grid[y][x] else BG
+                pixels += bytes((b, g, r, 0xFF))
+        mask_row = bytes(((w + 31) // 32) * 4)  # AND mask rows, padded to 32 bit
+        and_mask = mask_row * h
+        header = struct.pack("<IiiHHIIiiII", 40, w, 2 * h, 1, 32, 0,
+                             len(pixels) + len(and_mask), 0, 0, 0, 0)
+        images.append(header + bytes(pixels) + and_mask)
+
+    out = struct.pack("<HHH", 0, 1, len(images))  # ICONDIR: reserved, type, count
+    offset = 6 + 16 * len(images)
+    for (grid, w, h), image in zip(grids, images):
+        out += struct.pack("<BBBBHHII", w, h, 0, 0, 1, 32, len(image), offset)
+        offset += len(image)
+    return out + b"".join(images)
+
+
 def grid_to_svg(grid, size=SIZE):
     """Self-contained pixel-grid SVG. Each row's run of green pixels becomes a
     single <rect> (run-length), keeping the file small while `crispEdges`
@@ -259,6 +284,12 @@ def main():
 
     # SVG (self-contained, pixel grid, crisp edges).
     (WEB / "favicon.svg").write_text(grid_to_svg(grid), encoding="utf-8")
+
+    # ICO for legacy browsers/tools that cannot deal with SVG favicons.
+    ico_grids = [(scale(grid, n, n), n, n) for n in (16, 32, 48)]
+    ico = grid_to_ico_bytes(ico_grids)
+    (WEB / "favicon.ico").write_bytes(ico)
+    print("wrote web/favicon.ico (16/32/48, %d bytes)" % len(ico))
 
     # PNGs at every size browsers ask for, nearest-neighbour (no blur).
     targets = (
