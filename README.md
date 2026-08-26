@@ -38,4 +38,14 @@ Start the game by running the executable:
 
 ## WebAssembly Build
 
-WebAssembly artifacts are built automatically in the [CI pipeline](.github/workflows/ci.yml) to ensure reproducible builds and consistent toolchain configurations. The currently working WASM build uses LFortran and Emscripten.
+The currently working WASM build uses LFortran and Emscripten.
+
+To build locally, run:
+
+```bash
+scripts/build-web.sh
+```
+
+The script looks for `lfortran` and `emcc` in `tools/` and on your `PATH` (overrides: `LFORTRAN`, `EMCC`). If neither is found, it provisions pinned toolchain versions into `tools/` on the first run: LFortran 0.64.0, installed from conda-forge via micromamba (LFortran publishes no binary releases), and Emscripten 6.0.8, via the emsdk repository. Provisioning requires `git`, `python3`, `curl`, `tar`, and `bzip2`.
+
+The build emits `web/oregon.js` and `web/oregon.wasm`.
