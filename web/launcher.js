@@ -4,7 +4,10 @@
 // no game catalog and no fetched BASIC source, only the Fortran module to
 // start in the runner worker.
 
-import { sanitizeTerminalOutput } from "./terminal-output.js";
+import {
+  sanitizeTerminalOutput,
+  stripLineLeadingSpace,
+} from "./terminal-output.js";
 import { isTouchPointer, moveInputCaretToEnd } from "./terminal-input.js";
 import {
   isTerminalScrolledToBottom,
@@ -45,7 +48,11 @@ function appendOutput(text) {
     hasReceivedFirstOutput = true;
   }
 
-  terminalText += sanitizeTerminalOutput(text);
+  const atLineStart = terminalText === "" || terminalText.endsWith("\n");
+  terminalText += stripLineLeadingSpace(
+    sanitizeTerminalOutput(text),
+    atLineStart,
+  );
   scheduleOutputRender();
 }
 
