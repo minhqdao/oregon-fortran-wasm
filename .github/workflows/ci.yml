@@ -64,30 +64,27 @@ jobs:
       - name: Setup Emscripten
         uses: emscripten-core/setup-emsdk@v16
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
       - name: Build WebAssembly
         env:
-          EMSDK_PATH: ${{ env.EMSDK }}
-        run: |
-          lfortran \
-            --fixed-form \
-            --implicit-interface \
-            --implicit-typing \
-            --target=wasm32-unknown-emscripten \
-            src/oregon.f \
-            src/oregon_time.f \
-            -o oregon.js
+          EMCC: ${{ env.EMSDK }}/upstream/emscripten/emcc
+        run: scripts/build-web.sh
 
       - name: WASM smoke test
         run: |
-          printf "N\n3\n200\n100\n50\n50\n50\n2\n2\n2\n" | timeout 10 node oregon.js | tee output.txt
+          node scripts/headless-test.mjs web/oregon.js N 3 200 100 50 50 50 2 2 2 | tee output.txt
           grep -q "HOW GOOD A SHOT" output.txt
           ! grep -q "INVALID" output.txt
 
       - name: WASM smoke test (STOP quits)
         run: |
-          printf "STOP\n" | timeout 10 node oregon.js | tee stop_output.txt
+          node scripts/headless-test.mjs web/oregon.js STOP | tee stop_output.txt
           ! grep -q "HOW GOOD A SHOT" stop_output.txt
-          printf "N\nSTOP\n" | timeout 10 node oregon.js | tee stop_mid_output.txt
+          node scripts/headless-test.mjs web/oregon.js N STOP | tee stop_mid_output.txt
           grep -q "HOW GOOD A SHOT" stop_mid_output.txt
           ! grep -q "INVALID" stop_mid_output.txt
 
@@ -96,8 +93,8 @@ jobs:
         with:
           name: wasm-build
           path: |
-            oregon.js
-            oregon.wasm
+            web/oregon.js
+            web/oregon.wasm
 
   deploy-pages:
     needs: build-wasm
@@ -120,7 +117,6 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: wasm-build
-          path: web
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
