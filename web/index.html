@@ -50,6 +50,23 @@
         margin: 0 auto;
         max-width: 800px;
       }
+      #title {
+        color: #c8f8c8;
+        font-size: 14px;
+        font-weight: normal;
+        letter-spacing: 0.08em;
+        margin: 0 0 4px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      #subtitle {
+        color: rgba(200, 248, 200, 0.6);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        margin: 0 0 12px;
+        text-align: center;
+        text-transform: uppercase;
+      }
       .visually-hidden {
         clip: rect(0 0 0 0);
         clip-path: inset(50%);
@@ -72,7 +89,7 @@
           inset 0 0 30px rgba(255, 255, 255, 0.03),
           0 0 70px rgba(0, 0, 0, 0.65),
           0 0 0 1px rgba(255, 255, 255, 0.05);
-        height: min(600px, calc(100vh - 150px));
+        height: min(600px, calc(100vh - 200px));
         min-height: 360px;
         overflow: hidden;
         position: relative;
@@ -228,6 +245,9 @@
           min-height: calc(100vh - 32px);
           min-height: calc(100dvh - 32px);
         }
+        #subtitle {
+          font-size: 11px;
+        }
         #terminal-container {
           flex: 1 1 auto;
           height: auto;
@@ -272,7 +292,8 @@
   </head>
   <body>
     <main>
-      <h1 class="visually-hidden">The Oregon Trail</h1>
+      <h1 id="title">The Oregon Trail (Fortran 77)</h1>
+      <p id="subtitle">WebAssembly build using LFortran + Emscripten</p>
       <p id="status" hidden role="status" aria-atomic="true"></p>
       <div id="terminal-container">
         <h2 id="terminal-title" class="visually-hidden">Game terminal</h2>
