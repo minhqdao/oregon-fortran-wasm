@@ -90,3 +90,46 @@ jobs:
           printf "N\nSTOP\n" | timeout 10 node oregon.js | tee stop_mid_output.txt
           grep -q "HOW GOOD A SHOT" stop_mid_output.txt
           ! grep -q "INVALID" stop_mid_output.txt
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-build
+          path: |
+            oregon.js
+            oregon.wasm
+
+  deploy-pages:
+    needs: build-wasm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-build
+          path: web
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
