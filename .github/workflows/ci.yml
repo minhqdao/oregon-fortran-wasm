@@ -95,6 +95,7 @@ jobs:
           path: |
             web/oregon.js
             web/oregon.wasm
+          if-no-files-found: error
 
   deploy-pages:
     needs: build-wasm
@@ -117,6 +118,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: wasm-build
+          path: web
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
