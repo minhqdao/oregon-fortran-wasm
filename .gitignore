@@ -6,14 +6,14 @@
 # Local reference copy of the Basicade project (has its own repository).
 Basicade/
 
-
-tools/
 build/
 *.mod
 *.bc
 *.ll
 *.out
 *.exe
-oregon
-oregon.js
-oregon.wasm
+# Native and ad-hoc build outputs at the repo root.
+# (web/oregon.js and web/oregon.wasm are committed prebuilt artifacts.)
+/oregon
+/oregon.js
+/oregon.wasm

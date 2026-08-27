@@ -8,7 +8,7 @@ The Oregon Trail is a text-based educational computer game originally developed 
 
 This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 version of the game created by Philipp Engel and published in 2022 under the ISC license.
 
-The goal of this project is to explore native Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang.
+The goal of this project is to explore native Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang. The game is currently compiled with LFortran and Emscripten and runs entirely in the browser — [play it online](https://minhqdao.github.io/oregon-fortran-wasm/).
 
 ## Native Build
 

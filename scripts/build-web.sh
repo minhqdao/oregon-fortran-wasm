@@ -75,6 +75,7 @@ mkdir -p "$BUILD_DIR"
     --target=wasm32-unknown-emscripten \
     -sSTACK_SIZE=50mb \
     -sINITIAL_MEMORY=256mb \
+    -sEXIT_RUNTIME=1 \
     -sMODULARIZE \
     -sEXPORT_ES6 \
     -sEXPORTED_RUNTIME_METHODS=FS,callMain \
