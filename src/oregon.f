@@ -523,7 +523,9 @@ C
       R = 100 * OREGON_RAND()
    20 CONTINUE
       IEVTC = IEVTC + 1
-      IF (IEVTC .LT. 16 .AND. R .GT. IEVNTY(IEVTC)) GOTO 20
+      IF (IEVTC .LT. 16) THEN
+        IF (R .GT. IEVNTY(IEVTC)) GOTO 20
+      END IF
       IF (IEVTC .EQ. 1) THEN
         PRINT 170
         ITMIL = ITMIL - 15 - INT(5 * OREGON_RAND())
