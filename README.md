@@ -8,7 +8,7 @@ The Oregon Trail is a text-based educational computer game originally developed 
 
 This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 version of the game created by Philipp Engel and published in 2022 under the ISC license.
 
-The goal of this project is to explore native Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang. The game is currently built with LFortran and Emscripten and runs entirely in the browser — [play it online](https://minhqdao.github.io/oregon-fortran-wasm/).
+The goal of this project is to explore Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang. The game is currently built with LFortran and Emscripten and runs entirely in the browser — [play it online](https://minhqdao.github.io/oregon-fortran-wasm/).
 
 ## Native Build
 
@@ -54,14 +54,14 @@ The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten
 scripts/build-web.sh
 ```
 
-The script compiles the FORTRAN source with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`.
+The script compiles the FORTRAN 77 source with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`.
 
 ### Run Web Server
 
-Start a local web server with [Node.js](https://nodejs.org/en/download/):
+To play the game, start a local web server with [Node.js](https://nodejs.org/en/download/):
 
 ```bash
 node scripts/dev-server.mjs 8080
 ```
 
-Then open `http://localhost:8080` in your browser.
+Then open http://localhost:8080 in your browser.
