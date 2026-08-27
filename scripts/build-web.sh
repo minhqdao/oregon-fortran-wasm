@@ -3,10 +3,11 @@
 # Builds the browser artifacts web/oregon.js and web/oregon.wasm from the
 # FORTRAN 77 sources using LFortran (compile) and Emscripten (link).
 #
-# LFortran's own Emscripten link step cannot carry `-s` settings (they are
-# silently dropped), so the sources are compiled to object files with lfortran
-# and linked with emcc, which adds -sMODULARIZE/-sEXPORT_ES6 so the runner
-# worker can import the module factory as an ES module.
+# LFortran's own Emscripten link step cannot carry `-s` settings (its `-W`
+# option forwards them to emcc prefixed in a form clang parses as warning
+# options, so they are ignored), therefore the sources are compiled to object
+# files with lfortran and linked with emcc, which adds -sMODULARIZE/-sEXPORT_ES6
+# so the runner worker can import the module factory as an ES module.
 #
 # Requirements:
 #   - lfortran on PATH (override with $LFORTRAN)
