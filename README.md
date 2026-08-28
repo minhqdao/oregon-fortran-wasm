@@ -44,11 +44,11 @@ Start the game by running the executable:
 
 ### Prebuilt Artifacts
 
-`web/oregon.js` and `web/oregon.wasm` are committed for convenience so you can run the web version without installing the toolchain; they were generated with LFortran 0.64.0 and Emscripten 6.0.8. You can proceed to [Run Web Server](#run-web-server).
+`web/oregon.js` and `web/oregon.wasm` are committed for convenience so you can run the web version without installing the toolchain; they were generated with LFortran 0.65.0 and Emscripten 6.0.8. You can proceed to [Run Web Server](#run-web-server).
 
 ### Local WASM Build
 
-The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/). Install LFortran (e.g. with `conda install -c conda-forge lfortran`) and Emscripten, and make sure `lfortran` and `emcc` are on your `PATH`. The build is known to work with LFortran 0.64.0 and Emscripten 6.0.8, but other recent versions should work as well.
+The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/). Install LFortran (e.g. with `conda install -c conda-forge lfortran`) and Emscripten, and make sure `lfortran` and `emcc` are on your `PATH`. The build is known to work with LFortran 0.65.0 and Emscripten 6.0.8, but other recent versions should work as well.
 
 ```bash
 scripts/build-web.sh
