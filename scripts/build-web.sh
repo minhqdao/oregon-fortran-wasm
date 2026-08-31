@@ -72,10 +72,23 @@ mkdir -p "$BUILD_DIR"
 "$LFORTRAN" -c "${FFLAGS[@]}" -J "$BUILD_DIR" \
     src/oregon_time.f -o "$BUILD_DIR/oregon_time.o"
 
+# 4 MB initial / 32 MB max grown memory. Colossal Cave's port history is a
+# series of iOS crashes caused by eager linear-memory reservation: a fixed
+# 256 MB start aborted on reload under WebContent memory pressure, and even
+# a 16 MB start exhausted a small-RAM iPhone after a few refreshes (iOS
+# reclaims the previous page's memory lazily, so refreshes overlap). A
+# scripted playthrough of the sibling port never grows past the 4 MB start;
+# the reservation fits within one small page while 32 MB remains a generous
+# ceiling. The 1 MB stack keeps >10x headroom over the ~64 KB peak observed
+# with stack-overflow checking enabled. Oregon's screens and tables are
+# comparable in size; STACK_OVERFLOW_CHECK stays on to catch a regression.
 "$EMCC" \
     --target=wasm32-unknown-emscripten \
-    -sSTACK_SIZE=50mb \
-    -sINITIAL_MEMORY=256mb \
+    -sSTACK_SIZE=1mb \
+    -sINITIAL_MEMORY=4mb \
+    -sMAXIMUM_MEMORY=32mb \
+    -sALLOW_MEMORY_GROWTH=1 \
+    -sSTACK_OVERFLOW_CHECK=1 \
     -sEXIT_RUNTIME=1 \
     -sMODULARIZE \
     -sEXPORT_ES6 \
