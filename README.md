@@ -44,7 +44,7 @@ Start the game by running the executable:
 
 ### Prebuilt Artifacts
 
-`web/oregon.js` and `web/oregon.wasm` are committed for convenience so you can run the web version without installing the toolchain; they were generated with LFortran 0.65.0 and Emscripten 6.0.8. You can proceed to [Run Web Server](#run-web-server).
+`web/oregon.js` and `web/oregon.wasm` are committed for convenience so you can run the web version without installing the toolchain; they were generated with LFortran 0.65.0 and Emscripten 6.0.8. CI always rebuilds them from `src/` during the deployment pipeline, so a commit that changes `scripts/build-web.sh` flags catches up on the next `scripts/build-web.sh` run. You can proceed to [Run Web Server](#run-web-server).
 
 ### Local WASM Build
 
@@ -54,7 +54,7 @@ The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten
 scripts/build-web.sh
 ```
 
-The script compiles the FORTRAN 77 source with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`.
+The script compiles the FORTRAN 77 source with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`. The link reserves memory lazily (`-sINITIAL_MEMORY=4mb` growing to `-sMAXIMUM_MEMORY=32mb`); eager reservation (a fixed 256 MB start) made iOS Safari abort the page on reload under memory pressure, and every deploy should keep that lesson.
 
 ### Run Web Server
 
@@ -65,3 +65,48 @@ node scripts/dev-server.mjs 8080
 ```
 
 Then open http://localhost:8080 in your browser.
+
+### Deploy Bundle
+
+GitHub Pages caches every file with a fixed `max-age=600`, so deploying the
+multi-file `web/` module graph lets a reload mix a stale entry module with
+fresh siblings and fail module instantiation before any launcher code runs.
+`scripts/bundle-web.sh` (run by CI for the Pages deployment) collapses the
+launcher and worker import graphs into single self-contained files in `dist/`
+and references the entry with a per-deploy `?v=<build-id>` query, making each
+page load atomically one deploy. It needs `esbuild` on `PATH` or in
+`$ESBUILD`; CI installs it with
+`npm install --no-save --no-package-lock esbuild@0.25.10`.
+
+To preview and verify the exact deployment locally:
+
+```bash
+scripts/bundle-web.sh --out dist
+node scripts/check-bundle.test.mjs dist        # bundle integrity
+node scripts/dev-server.mjs 8080 dist          # serve the deploy bundle
+node --test scripts/e2e-bundle.test.mjs        # boot dist/ in headless Chrome
+```
+
+`e2e-bundle.test.mjs` starts and stops its own dev server and finds Chrome via
+`$CHROME`, standard macOS app paths, or `google-chrome`/`chromium` on `PATH`;
+it skips with a reason when Chrome or `dist/` is absent.
+
+## Checks
+
+Run the regression suite and the typecheck with:
+
+```bash
+node scripts/run-tests.mjs
+scripts/typecheck.sh
+```
+
+The suite drives scripted game sessions through the WebAssembly build (the
+same runner worker the browser uses) and, when `gfortran` is available,
+against a native build as well, comparing transcripts byte for byte within
+the deterministic setup phase (the game's RNG is clock-seeded, so no session
+reaches the random turns). `--no-parity` skips the native comparison and a
+test name can be passed to run a subset.
+
+Boot-phase tests (the inline guard in `web/index.html`) run against jsdom
+through `scripts/browser-smoke.sh`, which installs jsdom into a scratch
+directory outside the repository.

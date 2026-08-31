@@ -6,7 +6,12 @@
 # Local reference copy of the Basicade project (has its own repository).
 Basicade/
 
+# Local reference copy of the sibling Colossal Cave port (has its own repo).
+colossal-cave-wasm/
+
 build/
+dist/
+node_modules/
 *.mod
 *.bc
 *.ll
