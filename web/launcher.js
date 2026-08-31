@@ -196,9 +196,19 @@ function submitInput() {
 
 let preserveTerminalScrollOnFocus = false;
 
-/** @param {{ preserveScroll?: boolean }} [options] */
-function focusTerminalInput({ preserveScroll = false } = {}) {
-  if (!waitingForInput || document.activeElement === terminalInput) return;
+/** @param {{ preserveScroll?: boolean, force?: boolean }} [options] */
+function focusTerminalInput({ preserveScroll = false, force = false } = {}) {
+  if (!waitingForInput) return;
+  if (document.activeElement === terminalInput) {
+    // iOS leaves the field focused without ever raising the soft keyboard
+    // after the auto-focus that runs when the game asks for input, and a
+    // plain refocus of an already-focused field is a no-op there. A real
+    // tap (force) must therefore blur first: the following focus() is an
+    // activation again and iOS opens the keyboard. Only while the keyboard
+    // is actually closed -- blurring an open one would close it.
+    if (!force || !needsSoftKeyboardFocus()) return;
+    terminalInput.blur();
+  }
   const scrollTop = screen.scrollTop;
   preserveTerminalScrollOnFocus = preserveScroll;
   try {
@@ -247,7 +257,10 @@ let touchMouseEventPending = false;
 function handleTerminalPointerDown(event) {
   terminalPointerInteraction = true;
   touchMouseEventPending = isTouchPointer(event);
-  if (touchMouseEventPending) focusTerminalInput();
+  // Touch-down is a user activation on iOS: pass force so a tap on the
+  // already-focused field blurs and refocuses, raising the soft keyboard
+  // the gesture-less auto-focus could not.
+  if (touchMouseEventPending) focusTerminalInput({ force: true });
 }
 
 function handleTerminalPointerCancel() {
@@ -302,6 +315,22 @@ let keyboardCheckTimers = [];
 
 function usesTouchInput() {
   return usesMobilePointer.matches || navigator.maxTouchPoints > 0;
+}
+
+// Whether a focus() would need to raise the soft keyboard while the visual
+// viewport shows it closed: the viewport has not shrunk against the tallest
+// height recorded since boot (the focus/blur listeners keep that current).
+// Gates the iOS blur-then-refocus re-activation of an already-focused
+// field -- re-focusing while the keyboard is open would only close it.
+function needsSoftKeyboardFocus() {
+  if (!usesTouchInput()) return false;
+  const height = keyboardViewport.height ?? window.innerHeight;
+  const closedHeight = Math.max(
+    keyboardClosedViewportHeight,
+    window.innerHeight,
+    height,
+  );
+  return closedHeight - height <= 80;
 }
 
 function clearKeyboardConstraint() {
