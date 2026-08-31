@@ -1,4 +1,9 @@
-/** Removes terminal control characters that browsers render as placeholder glyphs. */
+// @ts-check
+
+/**
+ * Removes terminal control characters that browsers render as placeholder glyphs.
+ * @param {string} text
+ */
 export function sanitizeTerminalOutput(text) {
   return text.replaceAll("\u0007", "");
 }
@@ -11,6 +16,8 @@ export function sanitizeTerminalOutput(text) {
  * `atLineStart` must say whether `text` begins at the start of a line in the
  * rendered transcript; the caller derives it from the transcript because
  * echoed user input is interleaved with the game output.
+ * @param {string} text
+ * @param {boolean} atLineStart
  */
 export function stripLineLeadingSpace(text, atLineStart) {
   return text

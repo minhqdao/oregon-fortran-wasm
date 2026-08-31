@@ -1,4 +1,13 @@
-/** Coalesces repeated work into one browser animation frame. */
+// @ts-check
+
+/**
+ * Coalesces repeated work into one browser animation frame.
+ * @param {() => void} run
+ * @param {{
+ *   requestFrame?: (callback: () => void) => number,
+ *   cancelFrame?: (handle: number) => void
+ * }} [options]
+ */
 export function createFrameBatcher(
   run,
   {
@@ -6,6 +15,7 @@ export function createFrameBatcher(
     cancelFrame = cancelAnimationFrame,
   } = {},
 ) {
+  /** @type {number | undefined} */
   let frame;
 
   return {
