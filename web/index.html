@@ -23,13 +23,21 @@
     <link rel="icon" type="image/png" href="./favicon-16.png" sizes="16x16" />
     <link rel="icon" type="image/png" href="./favicon-32.png" sizes="32x32" />
     <link rel="icon" type="image/png" href="./favicon-64.png" sizes="64x64" />
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180" />
+    <link
+      rel="apple-touch-icon"
+      href="./apple-touch-icon.png"
+      sizes="180x180"
+    />
     <!--
       The launcher uses SharedArrayBuffer to stream keyboard input into a Web
       Worker that runs the WASM module, which requires cross-origin isolation.
       The coi-serviceworker.js (MIT, by Guido Zuidhof and contributors) registers
       a service worker that supplies the COOP/COEP response headers so this
-      works from any static server (and file:// is not supported).
+      works from any static server (and file:// is not supported). It would
+      prefer COEP: credentialless, but that mode is unsupported in some
+      browsers (including older iOS Safari), where it costs an extra guarded
+      degrade reload per session; every resource here is same-origin, so
+      require-corp works everywhere and the reload hop is skipped outright.
     -->
     <script>
       window.coi = { coepCredentialless: () => false };
@@ -168,18 +176,14 @@
         margin-top: 12px;
       }
       .terminal-actions a {
-        align-items: center;
-        display: inline-flex;
         -webkit-appearance: none;
         appearance: none;
         border: 1px solid rgba(200, 248, 200, 0.25);
         border-radius: 6px;
         color: rgba(200, 248, 200, 0.65);
         font-size: 14px;
-        justify-content: center;
         letter-spacing: 0.08em;
         outline: 0;
-        padding: 7px 20px;
         text-decoration: none;
         text-transform: uppercase;
         transition:
@@ -187,6 +191,40 @@
           border-color 0.18s ease-out,
           color 0.18s ease-out,
           text-shadow 0.18s ease-out;
+      }
+      /* The arrow stands ON the text's baseline, like any glyph: an inline
+         replaced element's baseline is its bottom edge, so SOURCE and the
+         icon share the one vertical anchor every platform agrees on, and
+         the 8px box spans roughly the caps' 8px height -- center-to-center
+         drift is impossible by construction. Box-center alignment (flex,
+         vertical-align middle) instead anchors to the line box center,
+         (ascent - descent) / 2 above the baseline where caps center at
+         cap-height / 2: numbers that differ per platform for the same
+         font family, which is what made the icon drift. */
+      .terminal-actions a svg {
+        fill: none;
+        /* No literal whitespace between label and icon in the markup:
+           in inline flow it would render as a full Courier space (~8px).
+           A fixed margin reproduces the original gap exactly. */
+        margin-left: 6px;
+        shape-rendering: crispEdges;
+        stroke: currentColor;
+        stroke-linecap: butt;
+        stroke-linejoin: miter;
+        stroke-width: 1;
+        vertical-align: baseline;
+      }
+      /* Both controls are the same fixed-height box with the label centered
+         by line-height: no flex, because iOS Safari does not stretch a
+         flex-item <button>, and the shared box geometry keeps the two
+         controls' heights equal by construction. */
+      .terminal-actions a,
+      .terminal-actions button {
+        box-sizing: border-box;
+        height: 32px;
+        line-height: 30px;
+        padding: 0 20px;
+        text-align: center;
       }
       button {
         --button-transition: 0.18s ease-out;
@@ -339,17 +377,126 @@
         </div>
       </div>
       <div class="terminal-actions">
+        <button id="restart-game" type="button">Restart game</button>
         <a
           id="github-link"
           href="https://github.com/minhqdao/oregon-fortran-wasm"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Source
+          Source<svg
+            aria-hidden="true"
+            width="8"
+            height="8"
+            viewBox="0 0 8 8"
+            focusable="false"
+          >
+            <path d="M0.5 7.5 L7 1 M7 1 H3 M7 1 V5" />
+          </svg>
         </a>
-        <button id="restart-game" type="button">Restart game</button>
       </div>
     </main>
+    <script>
+      // Boot-phase guard. index.html only paints a static "LOADING..." line;
+      // every dynamic state is owned by launcher.js. Before it (or the worker
+      // graph behind it) finishes loading, no launcher code exists to report
+      // anything, so failures here would otherwise leave the terminal stuck
+      // on LOADING... forever. Three independent nets:
+      //
+      // 1. Module instantiation failures (the classic post-deploy skew:
+      //    "SyntaxError: Importing binding name 'x' is not found") fire the
+      //    window error event with a message. One guarded recovery reload
+      //    fixes the ordinary case -- a stale cached entry module mixing
+      //    with fresh siblings -- because a reload revalidates the
+      //    top-level document (browsers bypass its cache even though GH
+      //    Pages caps HTML at the same fixed max-age=600 as every other
+      //    file), and Pages deployments now ship the entry as one
+      //    self-contained bundle whose bindings cannot skew. The
+      //    sessionStorage guard mirrors the coi-serviceworker pattern: at
+      //    most one recovery reload per system per session, never a loop.
+      // 2. Module fetch failures (404/OMT/network) fire the same event with
+      //    no message; after the recovery attempt those surface as text.
+      // 3. A watchdog for everything that slips past (no error event, or a
+      //    worker that dies before its first output): if the terminal still
+      //    shows only the static LOADING... line after 20s, say so. The
+      //    launcher owns #status once it runs, and disarms the watchdog by
+      //    setting data-oregon-boot-done as soon as the game produces
+      //    its first output, so the hint never fires for a healthy (if
+      //    slow) startup.
+      (function () {
+        var status = document.getElementById("status");
+        if (!status) return;
+        var output = document.getElementById("output");
+        var recoveryKey = "oregon-module-reload";
+
+        function showBootStatus(message) {
+          if (status.textContent) return;
+          status.textContent = message;
+          status.hidden = false;
+        }
+
+        window.addEventListener(
+          "error",
+          function (event) {
+            if (document.documentElement.dataset.oregonBootDone) return;
+            var hadMessage = Boolean(
+              event.message &&
+              // Module scripts report instantiation errors on window;
+              // resource load errors carry the failed element instead.
+              !(event.target && event.target !== window),
+            );
+            if (!hadMessage) {
+              showBootStatus(
+                (event.message || "The game failed to load.") +
+                  " Reload the page to retry.",
+              );
+              return;
+            }
+            // A skew-induced instantiation error is usually recoverable by
+            // one reload; if it persists (this session already retried),
+            // leave a visible diagnosis instead of looping. sessionStorage
+            // can throw in some private modes; a failed read just means
+            // "do not reload", which is the safe direction.
+            var retriedThisSession = false;
+            try {
+              retriedThisSession = Boolean(sessionStorage.getItem(recoveryKey));
+            } catch {
+              retriedThisSession = true;
+            }
+            if (
+              !retriedThisSession &&
+              /^https?:$/.test(window.location.protocol)
+            ) {
+              try {
+                sessionStorage.setItem(recoveryKey, "1");
+              } catch {
+                // Without storage the reload cannot be guarded; skip it.
+                return;
+              }
+              window.location.reload();
+              return;
+            }
+            showBootStatus(
+              "Failed to load: " +
+                event.message +
+                " (a reload did not help; try a hard reload / clearing the site data)",
+            );
+          },
+          true,
+        );
+
+        setTimeout(function () {
+          if (document.documentElement.dataset.oregonBootDone) return;
+          // Trim so the launcher's own "LOADING...\n" (no game output yet)
+          // is still caught: a stall at this stage is the common case.
+          if (output && output.textContent.trim() !== "LOADING...") return;
+          showBootStatus(
+            "Still loading after 20 seconds. Reload the page, or a hard reload if it persists.",
+          );
+        }, 20_000);
+      })();
+    </script>
+
     <script type="module" crossorigin src="./launcher.js"></script>
   </body>
 </html>
