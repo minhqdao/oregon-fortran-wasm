@@ -1,14 +1,17 @@
-// Static file server for web/ that sets the COOP/COEP headers required for
-// SharedArrayBuffer, mirroring what coi-serviceworker.js does for hosts that
-// cannot send headers themselves (e.g. GitHub Pages).
+// Static file server for the web build that sets the COOP/COEP headers
+// required for SharedArrayBuffer, mirroring what coi-serviceworker.js does
+// for hosts that cannot send headers themselves (e.g. GitHub Pages).
 //
-// Usage: node scripts/dev-server.mjs [port]
+// Usage: node scripts/dev-server.mjs [port] [rootDir]
+//   rootDir defaults to web/; pass dist/ to preview the deploy bundle.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("../web", import.meta.url));
+const root = process.argv[3]
+  ? fileURLToPath(new URL(process.argv[3], `file://${process.cwd()}/`))
+  : fileURLToPath(new URL("../web", import.meta.url));
 const port = Number(process.argv[2]) || 8080;
 
 const mimeTypes = {
@@ -29,7 +32,7 @@ createServer(async (request, response) => {
     let pathname = decodeURIComponent(url.pathname);
     if (pathname.endsWith("/")) pathname += "index.html";
     const filePath = normalize(join(root, pathname));
-    if (!filePath.startsWith(root)) {
+    if (!filePath.startsWith(root + sep)) {
       response.writeHead(403).end();
       return;
     }
