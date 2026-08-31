@@ -16,17 +16,25 @@ import {
   terminalHeightAboveViewport,
 } from "./terminal-scroll.js";
 import { hasTextSelection, updateTextContent } from "./terminal-selection.js";
-import { runnerCommand, runnerEvent } from "./runner-protocol.js";
+import {
+  createKeysBuffer,
+  maxInputLength,
+  runnerCommand,
+  runnerEvent,
+  writeInputLine,
+} from "./runner-protocol.js";
 import { createFrameBatcher } from "./terminal-render.js";
 
-const output = document.getElementById("output");
-const input = document.getElementById("input");
-const cursor = document.getElementById("cursor");
-const screen = document.getElementById("screen");
-const terminalContainer = document.getElementById("terminal-container");
-const status = document.getElementById("status");
-const restartButton = document.getElementById("restart-game");
-const terminalInput = document.getElementById("terminal-input");
+const output = /** @type {HTMLElement} */ (document.getElementById("output"));
+const input = /** @type {HTMLElement} */ (document.getElementById("input"));
+const cursor = /** @type {HTMLElement} */ (document.getElementById("cursor"));
+const screen = /** @type {HTMLElement} */ (document.getElementById("screen"));
+const terminalContainer = /** @type {HTMLElement} */ (document.getElementById("terminal-container"));
+const status = /** @type {HTMLElement} */ (document.getElementById("status"));
+const restartButton = /** @type {HTMLButtonElement} */ (document.getElementById("restart-game"));
+const terminalInput = /** @type {HTMLInputElement} */ (
+  document.getElementById("terminal-input")
+);
 
 const wasmUrl = new URL("./oregon.js", import.meta.url).href;
 
@@ -36,17 +44,36 @@ let waitingForInput = false;
 let pendingInputSeparator = false;
 let hasReceivedFirstOutput = false;
 let isCursorActive = false;
+/** @type {Worker | undefined} */
 let worker;
+/** @type {number | undefined} */
 let workerStartupTimer;
 let runId = 0;
-const maxInputLength = 254;
+let lastWorkerMessageAt = 0;
+/** @type {number | undefined} */
+let inputResponseTimer;
 const maxStartupRetries = 1;
 const workerStartupTimeoutMs = 15_000;
+// The game answers a submitted line within a few milliseconds; the worker is
+// also the only thing that can ever clear the "waiting for input" state, so
+// a silent gap after submitting means iOS suspended the process mid-flight.
+const inputResponseTimeoutMs = 2_500;
 
+/** @param {string} text */
 function appendOutput(text) {
   if (!hasReceivedFirstOutput) {
     terminalText = "";
     hasReceivedFirstOutput = true;
+    // The first game output means the whole module graph loaded and the
+    // worker is streaming: disarm index.html's boot guard (recovery reload
+    // + watchdog) so it can never misfire later in the session.
+    document.documentElement.dataset.oregonBootDone = "1";
+    try {
+      sessionStorage.removeItem("oregon-module-reload");
+    } catch {
+      // Private modes can throw on storage access; the guard is
+      // session-scoped anyway and loses relevance after boot.
+    }
   }
 
   // Visually separate user input from the game's answer with a blank line.
@@ -113,6 +140,7 @@ function render() {
   }
 }
 
+/** @param {string} message */
 function setStatus(message) {
   status.textContent = message;
   status.hidden = !message;
@@ -122,6 +150,8 @@ function releaseWorker() {
   terminalInput.blur();
   clearTimeout(workerStartupTimer);
   workerStartupTimer = undefined;
+  clearTimeout(inputResponseTimer);
+  inputResponseTimer = undefined;
   if (worker) {
     worker.terminate();
     worker = undefined;
@@ -131,6 +161,15 @@ function releaseWorker() {
 }
 
 function submitInput() {
+  // Safety net for a worker that vanished without a pagehide/pageshow cycle
+  // (iOS reclaiming a suspended tab): the submit would otherwise vanish into
+  // dead shared memory. The watchdog below covers the slower variant where
+  // the worker dies after the line was queued.
+  if (!worker || !sharedBuffer || !sharedKeys) {
+    restartGame();
+    return;
+  }
+
   const value = `${currentInput}\n`;
   terminalText += value;
   pendingInputSeparator = true;
@@ -140,16 +179,24 @@ function submitInput() {
   render();
   scrollTerminalToBottom(screen);
 
-  for (let index = 0; index < value.length; index++) {
-    Atomics.store(sharedKeys, 2 + index, value.charCodeAt(index));
-  }
-  Atomics.store(sharedKeys, 0, value.length);
+  writeInputLine(sharedKeys, value);
   Atomics.store(sharedBuffer, 0, 1);
   Atomics.notify(sharedBuffer, 0, 1);
+
+  // A worker killed while the page was hidden (pagehide terminated it, or iOS
+  // reclaimed it) never consumes the line and never reports anything: without
+  // this watch the terminal would look frozen with a keyboard open.
+  const submittedAt = Date.now();
+  clearTimeout(inputResponseTimer);
+  inputResponseTimer = setTimeout(() => {
+    inputResponseTimer = undefined;
+    if (lastWorkerMessageAt < submittedAt) restartGame();
+  }, inputResponseTimeoutMs);
 }
 
 let preserveTerminalScrollOnFocus = false;
 
+/** @param {{ preserveScroll?: boolean }} [options] */
 function focusTerminalInput({ preserveScroll = false } = {}) {
   if (!waitingForInput || document.activeElement === terminalInput) return;
   const scrollTop = screen.scrollTop;
@@ -196,6 +243,7 @@ function handleTerminalClick() {
 
 let touchMouseEventPending = false;
 
+/** @param {PointerEvent} event */
 function handleTerminalPointerDown(event) {
   terminalPointerInteraction = true;
   touchMouseEventPending = isTouchPointer(event);
@@ -207,6 +255,7 @@ function handleTerminalPointerCancel() {
   render();
 }
 
+/** @param {MouseEvent} event */
 function handleTerminalMouseDown(event) {
   const followsTouch = touchMouseEventPending;
   touchMouseEventPending = false;
@@ -228,13 +277,27 @@ function handleTerminalMouseDown(event) {
 // Mobile Safari can resize and pan its visual viewport at different points in
 // the keyboard animation. Constrain the terminal itself instead of scrolling
 // the page, which avoids exposing Safari's blank root scroll area.
+/**
+ * The visual viewport when available, otherwise window. The window fallback
+ * only supplies the read-through-`??` members; the constrain path never runs
+ * when `keyboardViewport === window`.
+ * @type {{
+ *   height?: number,
+ *   width?: number,
+ *   offsetTop?: number,
+ *   addEventListener: typeof window.addEventListener,
+ * }}
+ */
 const keyboardViewport = window.visualViewport ?? window;
 const usesMobilePointer = window.matchMedia("(pointer: coarse)");
 let previousViewportWidth = keyboardViewport.width ?? window.innerWidth;
+/** @type {number | undefined} */
 let keyboardResizeFrame;
+/** @type {number | undefined} */
 let constrainedTerminalHeight;
 let keyboardClosedViewportHeight =
   keyboardViewport.height ?? window.innerHeight;
+/** @type {number[]} */
 let keyboardCheckTimers = [];
 
 function usesTouchInput() {
@@ -258,7 +321,9 @@ function constrainTerminalAboveKeyboard() {
   keyboardResizeFrame = undefined;
   if (!waitingForInput || document.activeElement !== terminalInput) return;
 
-  const visibleBottom = keyboardViewport.offsetTop + keyboardViewport.height;
+  const visibleBottom =
+    (keyboardViewport.offsetTop ?? 0) +
+    (keyboardViewport.height ?? window.innerHeight);
   const overlap = terminalActiveLineOverlap(terminalInput, visibleBottom);
   if (!constrainedTerminalHeight && overlap <= 0) return;
 
@@ -305,8 +370,8 @@ function handleKeyboardViewportResize() {
     return;
   }
 
-  const height = keyboardViewport.height;
-  const width = keyboardViewport.width;
+  const height = keyboardViewport.height ?? window.innerHeight;
+  const width = keyboardViewport.width ?? window.innerWidth;
   const widthChanged = Math.abs(width - previousViewportWidth) >= 24;
   previousViewportWidth = width;
 
@@ -349,7 +414,7 @@ terminalInput.addEventListener("blur", () => {
   cancelKeyboardChecks();
   clearKeyboardConstraint();
   keyboardClosedViewportHeight = Math.max(
-    keyboardClosedViewportHeight,
+    keyboardClosedViewportHeight ?? 0,
     keyboardViewport.height ?? window.innerHeight,
   );
   // Clicking terminal text briefly transfers focus so the browser can retain
@@ -364,13 +429,19 @@ terminalInput.addEventListener("input", (event) => {
 
   // Mobile keyboards often insert a newline (\n) or trigger insertLineBreak instead of an 'Enter' keydown event
   if (
-    event.inputType === "insertLineBreak" ||
+    /** @type {InputEvent} */ (event).inputType === "insertLineBreak" ||
     terminalInput.value.includes("\n")
   ) {
     terminalInput.value = terminalInput.value.replace(/\n/g, "");
     submitInput();
     return;
   }
+
+  // The input buffer stores one byte per character; drop anything outside
+  // printable ASCII (IME/CJK/pasted Unicode would otherwise wrap into wrong
+  // codes). Keeps the native value, display and submitted text consistent.
+  const printable = terminalInput.value.replace(/[^\x20-\x7E]/g, "");
+  if (printable !== terminalInput.value) terminalInput.value = printable;
 
   // Enforce max length on the input field
   if (terminalInput.value.length > maxInputLength) {
@@ -400,24 +471,54 @@ terminalContainer.addEventListener(
 terminalContainer.addEventListener("mousedown", handleTerminalMouseDown);
 terminalContainer.addEventListener("click", handleTerminalClick);
 
+/** @type {Int32Array | undefined} */
 let sharedBuffer;
+/** @type {Uint8Array | undefined} */
 let sharedKeys;
 const isolationReloadKey = "oregon-isolation-reload";
 
+// The coi service worker performs its own reloads: the first-visit reload
+// once it controls the page, and a degrade reload when COEP credentialless
+// fails. This helper covers only the gap coi leaves on a fresh first
+// visit (worker registered but not yet controlling the page) with one
+// guarded reload; both systems guard with sessionStorage, so the page
+// reloads at most once per system per session -- never in a loop.
 async function ensureCrossOriginIsolation() {
   if (window.crossOriginIsolated) {
     sessionStorage.removeItem(isolationReloadKey);
     return true;
   }
 
+  if (typeof SharedArrayBuffer === "undefined") {
+    throw new Error(
+      "This browser does not support SharedArrayBuffer, which the game needs to handle input.",
+    );
+  }
+
   if (!navigator.serviceWorker) return false;
 
-  try {
-    await navigator.serviceWorker.ready;
-  } catch {
+  // serviceWorker.ready stays pending forever when no registration can
+  // exist (e.g. Safari private browsing rejects them), which would hang
+  // the launcher on LOADING...; fail fast instead.
+  const ready = await Promise.race([
+    navigator.serviceWorker.ready.then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 5_000)),
+  ]);
+  if (!ready) return false;
+
+  if (navigator.serviceWorker.controller) {
+    // coi is serving this page and handles its own degradation. Give its
+    // in-flight reload a moment to navigate before declaring failure.
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    if (window.crossOriginIsolated) {
+      sessionStorage.removeItem(isolationReloadKey);
+      return true;
+    }
     return false;
   }
 
+  // Registered but not controlling yet: reload once so coi's fetch
+  // handler can add the isolation headers to the page itself.
   if (!sessionStorage.getItem(isolationReloadKey)) {
     sessionStorage.setItem(isolationReloadKey, "1");
     window.location.reload();
@@ -434,12 +535,14 @@ async function start() {
   if (isIsolated === undefined) return;
   if (!isIsolated) {
     throw new Error(
-      "Interactive input needs cross-origin isolation (COOP and COEP headers).",
+      "The game could not start: cross-origin isolation is unavailable " +
+        "(this happens in private browsing or when service workers are " +
+        "blocked). Try a regular tab, or reload the page.",
     );
   }
 
   const buffer = new SharedArrayBuffer(4);
-  const keys = new SharedArrayBuffer(256);
+  const keys = createKeysBuffer();
   sharedBuffer = new Int32Array(buffer);
   sharedKeys = new Uint8Array(keys);
   Atomics.store(sharedBuffer, 0, 0);
@@ -448,12 +551,19 @@ async function start() {
   launchWorker(buffer, keys, currentRunId);
 }
 
+/**
+ * @param {SharedArrayBuffer} buffer
+ * @param {SharedArrayBuffer} keys
+ * @param {number} currentRunId
+ * @param {number} [attempt]
+ */
 function launchWorker(buffer, keys, currentRunId, attempt = 0) {
   if (currentRunId !== runId) return;
 
-  let activeWorker;
+  /** @type {Worker | undefined} */
+  let createdWorker;
   try {
-    activeWorker = new Worker(new URL("./runner.worker.js", import.meta.url), {
+    createdWorker = new Worker(new URL("./runner.worker.js", import.meta.url), {
       type: "module",
     });
   } catch (error) {
@@ -463,6 +573,8 @@ function launchWorker(buffer, keys, currentRunId, attempt = 0) {
     }
     throw error;
   }
+  if (!createdWorker) return;
+  const activeWorker = createdWorker;
   worker = activeWorker;
   let hasStarted = false;
 
@@ -472,6 +584,7 @@ function launchWorker(buffer, keys, currentRunId, attempt = 0) {
     workerStartupTimer = undefined;
   }
 
+  /** @param {string} message */
   function handleStartupFailure(message) {
     if (worker !== activeWorker) return;
     clearTimeout(workerStartupTimer);
@@ -497,6 +610,7 @@ function launchWorker(buffer, keys, currentRunId, attempt = 0) {
 
   activeWorker.onmessage = (event) => {
     if (worker !== activeWorker) return;
+    lastWorkerMessageAt = Date.now();
     const data = runnerEvent(event.data);
     if (data.type === "READY") {
       activeWorker.postMessage(
@@ -538,8 +652,37 @@ function launchWorker(buffer, keys, currentRunId, attempt = 0) {
   );
 }
 
-window.addEventListener("pagehide", releaseWorker, { once: true });
+// iOS fires pagehide when a tab is backgrounded, and the worker either dies
+// with the suspended process or is terminated here. Any restore path (plain
+// foregrounding, bfcache) then resumes into a dead game, so remember that a
+// live game was lost and restart on the next pageshow.
+let interruptedByPageHide = false;
 
+window.addEventListener("pagehide", () => {
+  interruptedByPageHide = Boolean(worker);
+  releaseWorker();
+});
+
+/**
+ * Read-only snapshot for jsdom tests and debug console use; the launcher
+ * itself never reads it.
+ */
+const debugHandle = /** @type {Window & { oregonDebug: { get state(): { worker: Worker | undefined, waitingForInput: boolean, runId: number } } }} */ (
+  /** @type {unknown} */ (window)
+);
+debugHandle.oregonDebug = {
+  get state() {
+    return { worker, waitingForInput, runId };
+  },
+};
+
+window.addEventListener("pageshow", () => {
+  if (!interruptedByPageHide) return;
+  interruptedByPageHide = false;
+  restartGame();
+});
+
+/** @param {Error} error */
 function reportStartError(error) {
   releaseWorker();
   cancelOutputRender();
@@ -552,6 +695,7 @@ function reportStartError(error) {
 
 function restartGame() {
   runId += 1;
+  interruptedByPageHide = false;
   releaseWorker();
   cancelOutputRender();
   terminalText = "LOADING...\n";
