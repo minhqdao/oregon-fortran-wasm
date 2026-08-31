@@ -10,10 +10,7 @@ import {
 } from "./terminal-output.js";
 import { isTouchPointer, moveInputCaretToEnd } from "./terminal-input.js";
 import {
-  isTerminalScrolledToBottom,
   scrollTerminalToBottom,
-  terminalActiveLineOverlap,
-  terminalHeightAboveViewport,
 } from "./terminal-scroll.js";
 import { hasTextSelection, updateTextContent } from "./terminal-selection.js";
 import {
@@ -112,6 +109,76 @@ function cancelOutputRender() {
   outputRenderer.cancel();
 }
 
+// The soft keyboard is only detected, never laid out against: the terminal
+// keeps its normal size and the page scrolls natively. Detecting remains
+// necessary because iOS raises the keyboard only for focus() calls made
+// inside a gesture handler, so the auto-focus issued when the game asks for
+// input leaves the field focused with the keyboard still closed. A tap must
+// then re-trigger focus, which requires knowing whether the keyboard is
+// already open.
+/**
+ * The visual viewport when available, otherwise window. Only `height` is
+ * read, with a ?? fallback to innerHeight on window.
+ * @type {{
+ *   height?: number,
+ *   addEventListener: typeof window.addEventListener,
+ * }}
+ */
+const keyboardViewport = window.visualViewport ?? window;
+const usesMobilePointer = window.matchMedia("(pointer: coarse)");
+let keyboardClosedViewportHeight =
+  keyboardViewport.height ?? window.innerHeight;
+
+function usesTouchInput() {
+  return usesMobilePointer.matches || navigator.maxTouchPoints > 0;
+}
+
+function needsSoftKeyboardFocus() {
+  if (!usesTouchInput()) return false;
+  const height = keyboardViewport.height ?? window.innerHeight;
+  const closedHeight = Math.max(
+    keyboardClosedViewportHeight,
+    window.innerHeight,
+    height,
+  );
+  return closedHeight - height <= 80;
+}
+
+document.addEventListener(
+  "visibilitychange",
+  restoreTerminalAfterVisibilityChange,
+);
+
+// Desktop-only safety net. The keyboard-constraining code was removed in
+// favor of native page scrolling on touch, but on a desktop a window resize
+// (OS resize, fullscreen toggle, devtools dock) re-measures the scrollable
+// terminal without firing anything that keeps the just-shown prompt in view,
+// so it can end up scrolled off. Touch is deliberately excluded: the visual
+// viewport drives its own scrolling there and yanking the terminal to the
+// bottom during the soft-keyboard animation is exactly the behavior the
+// rework removed.
+window.addEventListener("resize", () => {
+  if (usesTouchInput()) return;
+  if (!waitingForInput || document.activeElement !== terminalInput) return;
+  scrollTerminalToBottom(screen);
+});
+
+terminalInput.addEventListener("focus", () => {
+  render();
+  // At focus time the keyboard is (nearly) always still closed, so this is
+  // the reliable moment to record the unobstructed viewport height.
+  keyboardClosedViewportHeight = Math.max(
+    keyboardClosedViewportHeight,
+    keyboardViewport.height ?? window.innerHeight,
+  );
+});
+terminalInput.addEventListener("blur", () => {
+  // Clicking terminal text briefly transfers focus so the browser can retain
+  // native text selection. Keep the existing cursor animation running until
+  // the click determines whether this was a tap/click or a selection drag.
+  if (!terminalPointerInteraction) render();
+});
+
 function render() {
   updateTextContent(output, terminalText);
   updateTextContent(input, waitingForInput ? currentInput : "");
@@ -194,36 +261,20 @@ function submitInput() {
   }, inputResponseTimeoutMs);
 }
 
-let preserveTerminalScrollOnFocus = false;
-
-/** @param {{ preserveScroll?: boolean, force?: boolean }} [options] */
-function focusTerminalInput({ preserveScroll = false, force = false } = {}) {
+function focusTerminalInput({ force = false } = {}) {
   if (!waitingForInput) return;
   if (document.activeElement === terminalInput) {
-    // iOS leaves the field focused without ever raising the soft keyboard
-    // after the auto-focus that runs when the game asks for input, and a
-    // plain refocus of an already-focused field is a no-op there. A real
-    // tap (force) must therefore blur first: the following focus() is an
-    // activation again and iOS opens the keyboard. Only while the keyboard
-    // is actually closed -- blurring an open one would close it.
+    // iOS can leave the field focused without ever showing the soft
+    // keyboard. Re-focusing it then does nothing, so on a tap (a real
+    // gesture) blur first: the following focus() is an activation again
+    // and iOS opens the keyboard.
     if (!force || !needsSoftKeyboardFocus()) return;
     terminalInput.blur();
   }
-  const scrollTop = screen.scrollTop;
-  preserveTerminalScrollOnFocus = preserveScroll;
-  try {
-    terminalInput.focus({ preventScroll: true });
-  } finally {
-    preserveTerminalScrollOnFocus = false;
-  }
+  // preventScroll: focusing must never yank the viewport around; opening the
+  // keyboard itself may, which is Safari's own behavior and left alone.
+  terminalInput.focus({ preventScroll: true });
   moveInputCaretToEnd(terminalInput);
-  if (preserveScroll) screen.scrollTop = scrollTop;
-}
-
-function keepActiveInputVisible() {
-  if (waitingForInput && document.activeElement === terminalInput) {
-    scrollTerminalToBottom(screen);
-  }
 }
 
 function restoreTerminalAfterVisibilityChange() {
@@ -235,7 +286,10 @@ function restoreTerminalAfterVisibilityChange() {
     screen.scrollTop = scrollTop > 0 ? scrollTop - 1 : 1;
     screen.scrollTop = scrollTop;
   }
-  if (!usesTouchInput()) focusTerminalInput({ preserveScroll: true });
+  // iOS drops the keyboard while the tab is hidden and the field usually
+  // stays focused, so a plain focus() would change nothing. The tap on
+  // return re-focuses via click; this only refreshes the caret state.
+  focusTerminalInput();
 }
 
 let terminalPointerInteraction = false;
@@ -243,8 +297,14 @@ let terminalPointerInteraction = false;
 function handleTerminalClick() {
   // A click is also fired after dragging to select text. Refocusing the hidden
   // input here would collapse the range the user just created.
+  const followsTouch = clickFollowsTouch;
+  clickFollowsTouch = false;
   if (!hasTextSelection(window.getSelection())) {
-    focusTerminalInput();
+    // On touch devices the keyboard only rises for focus() calls inside a
+    // gesture handler, and `click` is one that browsers suppress whenever the
+    // finger moved (scroll drag, selection pan) -- unlike `pointerdown`,
+    // which fires for every touch.
+    focusTerminalInput({ force: followsTouch });
   } else {
     render();
   }
@@ -252,15 +312,13 @@ function handleTerminalClick() {
 }
 
 let touchMouseEventPending = false;
+let clickFollowsTouch = false;
 
 /** @param {PointerEvent} event */
 function handleTerminalPointerDown(event) {
   terminalPointerInteraction = true;
   touchMouseEventPending = isTouchPointer(event);
-  // Touch-down is a user activation on iOS: pass force so a tap on the
-  // already-focused field blurs and refocuses, raising the soft keyboard
-  // the gesture-less auto-focus could not.
-  if (touchMouseEventPending) focusTerminalInput({ force: true });
+  if (touchMouseEventPending) clickFollowsTouch = true;
 }
 
 function handleTerminalPointerCancel() {
@@ -286,171 +344,6 @@ function handleTerminalMouseDown(event) {
     event.preventDefault();
   }
 }
-
-// Mobile Safari can resize and pan its visual viewport at different points in
-// the keyboard animation. Constrain the terminal itself instead of scrolling
-// the page, which avoids exposing Safari's blank root scroll area.
-/**
- * The visual viewport when available, otherwise window. The window fallback
- * only supplies the read-through-`??` members; the constrain path never runs
- * when `keyboardViewport === window`.
- * @type {{
- *   height?: number,
- *   width?: number,
- *   offsetTop?: number,
- *   addEventListener: typeof window.addEventListener,
- * }}
- */
-const keyboardViewport = window.visualViewport ?? window;
-const usesMobilePointer = window.matchMedia("(pointer: coarse)");
-let previousViewportWidth = keyboardViewport.width ?? window.innerWidth;
-/** @type {number | undefined} */
-let keyboardResizeFrame;
-/** @type {number | undefined} */
-let constrainedTerminalHeight;
-let keyboardClosedViewportHeight =
-  keyboardViewport.height ?? window.innerHeight;
-/** @type {number[]} */
-let keyboardCheckTimers = [];
-
-function usesTouchInput() {
-  return usesMobilePointer.matches || navigator.maxTouchPoints > 0;
-}
-
-// Whether a focus() would need to raise the soft keyboard while the visual
-// viewport shows it closed: the viewport has not shrunk against the tallest
-// height recorded since boot (the focus/blur listeners keep that current).
-// Gates the iOS blur-then-refocus re-activation of an already-focused
-// field -- re-focusing while the keyboard is open would only close it.
-function needsSoftKeyboardFocus() {
-  if (!usesTouchInput()) return false;
-  const height = keyboardViewport.height ?? window.innerHeight;
-  const closedHeight = Math.max(
-    keyboardClosedViewportHeight,
-    window.innerHeight,
-    height,
-  );
-  return closedHeight - height <= 80;
-}
-
-function clearKeyboardConstraint() {
-  terminalContainer.classList.remove("keyboard-constrained");
-  terminalContainer.style.removeProperty("--keyboard-terminal-height");
-  constrainedTerminalHeight = undefined;
-}
-
-function cancelKeyboardChecks() {
-  if (keyboardResizeFrame) cancelAnimationFrame(keyboardResizeFrame);
-  keyboardResizeFrame = undefined;
-  for (const timer of keyboardCheckTimers) clearTimeout(timer);
-  keyboardCheckTimers = [];
-}
-
-function constrainTerminalAboveKeyboard() {
-  keyboardResizeFrame = undefined;
-  if (!waitingForInput || document.activeElement !== terminalInput) return;
-
-  const visibleBottom =
-    (keyboardViewport.offsetTop ?? 0) +
-    (keyboardViewport.height ?? window.innerHeight);
-  const overlap = terminalActiveLineOverlap(terminalInput, visibleBottom);
-  if (!constrainedTerminalHeight && overlap <= 0) return;
-
-  const availableTerminalHeight = terminalHeightAboveViewport(
-    terminalContainer,
-    visibleBottom,
-  );
-  const terminalHeight = constrainedTerminalHeight
-    ? Math.min(constrainedTerminalHeight, availableTerminalHeight)
-    : availableTerminalHeight;
-  if (terminalHeight === constrainedTerminalHeight) return;
-
-  const shouldKeepPromptPinned =
-    constrainedTerminalHeight === undefined ||
-    isTerminalScrolledToBottom(screen);
-  terminalContainer.style.setProperty(
-    "--keyboard-terminal-height",
-    `${terminalHeight}px`,
-  );
-  terminalContainer.classList.add("keyboard-constrained");
-  constrainedTerminalHeight = terminalHeight;
-
-  if (shouldKeepPromptPinned) {
-    scrollTerminalToBottom(screen);
-    keyboardResizeFrame = requestAnimationFrame(() => {
-      keyboardResizeFrame = undefined;
-      scrollTerminalToBottom(screen);
-    });
-  }
-}
-
-function queueKeyboardConstraintCheck() {
-  if (usesTouchInput() && keyboardViewport !== window) {
-    if (keyboardResizeFrame) cancelAnimationFrame(keyboardResizeFrame);
-    keyboardResizeFrame = requestAnimationFrame(() => {
-      keyboardResizeFrame = requestAnimationFrame(constrainTerminalAboveKeyboard);
-    });
-  }
-}
-
-function handleKeyboardViewportResize() {
-  if (!usesTouchInput() || keyboardViewport === window) {
-    keepActiveInputVisible();
-    return;
-  }
-
-  const height = keyboardViewport.height ?? window.innerHeight;
-  const width = keyboardViewport.width ?? window.innerWidth;
-  const widthChanged = Math.abs(width - previousViewportWidth) >= 24;
-  previousViewportWidth = width;
-
-  if (widthChanged) {
-    clearKeyboardConstraint();
-    keyboardClosedViewportHeight = height;
-    return;
-  }
-  if (
-    keyboardClosedViewportHeight &&
-    (height >= keyboardClosedViewportHeight - 80 ||
-      height >= window.innerHeight - 80)
-  ) {
-    clearKeyboardConstraint();
-    return;
-  }
-  queueKeyboardConstraintCheck();
-}
-
-keyboardViewport.addEventListener("resize", handleKeyboardViewportResize);
-keyboardViewport.addEventListener("scroll", queueKeyboardConstraintCheck);
-document.addEventListener(
-  "visibilitychange",
-  restoreTerminalAfterVisibilityChange,
-);
-
-terminalInput.addEventListener("focus", () => {
-  render();
-  if (!preserveTerminalScrollOnFocus) keepActiveInputVisible();
-  keyboardClosedViewportHeight = Math.max(
-    keyboardClosedViewportHeight ?? 0,
-    keyboardViewport.height ?? window.innerHeight,
-  );
-  previousViewportWidth = keyboardViewport.width ?? window.innerWidth;
-  keyboardCheckTimers = [50, 300, 700].map((delay) =>
-    setTimeout(queueKeyboardConstraintCheck, delay),
-  );
-});
-terminalInput.addEventListener("blur", () => {
-  cancelKeyboardChecks();
-  clearKeyboardConstraint();
-  keyboardClosedViewportHeight = Math.max(
-    keyboardClosedViewportHeight ?? 0,
-    keyboardViewport.height ?? window.innerHeight,
-  );
-  // Clicking terminal text briefly transfers focus so the browser can retain
-  // native text selection. Keep the existing cursor animation running until
-  // the click determines whether this was a tap/click or a selection drag.
-  if (!terminalPointerInteraction) render();
-});
 
 // 1. Handle live typing, backspacing, and mobile "Return/Go" keys
 terminalInput.addEventListener("input", (event) => {
@@ -654,7 +547,7 @@ function launchWorker(buffer, keys, currentRunId, attempt = 0) {
       terminalInput.value = "";
       waitingForInput = true;
       flushOutputRender();
-      focusTerminalInput(); // Auto-focus input field and pull up mobile keyboard
+      focusTerminalInput(); // Focus the command field; a tap opens the keyboard on mobile
     } else if (data.type === "ERROR") {
       if (!hasStarted) {
         handleStartupFailure(data.message);
@@ -693,8 +586,8 @@ window.addEventListener("pagehide", () => {
 });
 
 /**
- * Read-only snapshot for jsdom tests and debug console use; the launcher
- * itself never reads it.
+ * Read-only snapshot for the jsdom smoke tests and debug console use
+ * (scripts/browser-smoke.test.mjs); the launcher itself never reads it.
  */
 const debugHandle = /** @type {Window & { oregonDebug: { get state(): { worker: Worker | undefined, waitingForInput: boolean, runId: number } } }} */ (
   /** @type {unknown} */ (window)

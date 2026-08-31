@@ -69,12 +69,12 @@ jobs:
       - name: Typecheck @ts-check sources (strict)
         run: scripts/typecheck.sh
 
-      - name: Boot-guard tests (index.html inline guard in jsdom)
+      - name: Browser smoke tests (launcher gestures + boot guard)
         env:
           SMOKE_NODE_MODULES: ${{ github.workspace }}/scripts/node_modules
         run: |
           npm install --no-save --no-package-lock --prefix scripts jsdom@26
-          node --test scripts/boot-guard.test.mjs
+          node --test scripts/browser-smoke.test.mjs scripts/boot-guard.test.mjs
 
   build-wasm:
     runs-on: ubuntu-latest

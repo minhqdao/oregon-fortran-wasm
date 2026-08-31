@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
-# Runs the jsdom-based browser tests without adding a package.json and
-# without putting anything in the repository: jsdom lives in a cache
-# directory outside the working tree (override with $SMOKE_HOME) and the
-# tests find it through $SMOKE_NODE_MODULES.
-#
-# Only the boot-guard suite runs here: the launcher's touch-gesture tests
-# exercise colossal-cave-wasm's native-scroll keyboard model, which this
-# project deliberately does not use (the terminal constrains itself above
-# the soft keyboard instead).
+# Runs the jsdom-based browser smoke tests for web/launcher.js without
+# adding a package.json and without putting anything in the repository:
+# jsdom lives in a cache directory outside the working tree (override with
+# $SMOKE_HOME) and the test finds it through $SMOKE_NODE_MODULES.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,5 +15,6 @@ if [ ! -d "$SMOKE_HOME/node_modules/jsdom" ]; then
 fi
 
 SMOKE_NODE_MODULES="$SMOKE_HOME/node_modules" exec node --test \
+    scripts/browser-smoke.test.mjs \
     scripts/boot-guard.test.mjs \
     "$@"
