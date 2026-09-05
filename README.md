@@ -1,4 +1,4 @@
-# Oregon Fortran WASM
+# The Oregon Trail (WebAssembly Build)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/minhqdao/oregon-fortran-wasm/ci.yml?logo=github&label=CI)](https://github.com/minhqdao/oregon-fortran-wasm/actions/workflows/ci.yml)
 [![Play online](https://img.shields.io/website?url=https%3A%2F%2Fminhqdao.github.io%2Foregon-fortran-wasm%2F&logo=webassembly&label=play%20online)](https://minhqdao.github.io/oregon-fortran-wasm/)
