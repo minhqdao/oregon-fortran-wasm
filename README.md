@@ -12,84 +12,38 @@ The goal of this project is to explore Fortran-to-WebAssembly compilation using 
 
 ## Native Build
 
-Make sure either `gfortran`, `lfortran`, or `flang` are installed on your system. Other compilers may work as well but have not been tested.
-
-Choose a command to compile the FORTRAN 77 source code:
-
-### gfortran
+Requires `gfortran`, `lfortran`, or `flang`; other compilers may work but have not been tested.
 
 ```bash
+# gfortran
 gfortran src/oregon.f src/oregon_time.f -o oregon
-```
 
-### lfortran
-
-```bash
+# lfortran
 lfortran --fixed-form --implicit-interface --implicit-typing src/oregon.f src/oregon_time.f -o oregon
-```
 
-### flang
-
-```bash
+# flang
 flang src/oregon.f src/oregon_time.f -o oregon
 ```
 
-Start the game by running the executable:
-
-```bash
-./oregon
-```
+Run the game with `./oregon`.
 
 ## WebAssembly Build
 
-### Prebuilt Artifacts
-
-`web/oregon.js` and `web/oregon.wasm` are committed for convenience so you can run the web version without installing the toolchain; they were generated with LFortran 0.65.0 and Emscripten 6.0.8. CI always rebuilds them from `src/` during the deployment pipeline, so a commit that changes `scripts/build-web.sh` flags catches up on the next `scripts/build-web.sh` run. You can proceed to [Run Web Server](#run-web-server).
-
-### Local WASM Build
-
-The WebAssembly build requires [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/). Install LFortran (e.g. with `conda install -c conda-forge lfortran`) and Emscripten, and make sure `lfortran` and `emcc` are on your `PATH`. The build is known to work with LFortran 0.65.0 and Emscripten 6.0.8, but other recent versions should work as well.
+Prebuilt `web/oregon.js` and `web/oregon.wasm` (LFortran 0.65.0, Emscripten 6.0.9) are committed, so you can run the web version without a toolchain; CI rebuilds them for each deployment. To rebuild them yourself, install [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/), make sure both are on your `PATH`, and run:
 
 ```bash
 scripts/build-web.sh
 ```
 
-The script compiles the FORTRAN 77 source with `lfortran` and links with `emcc`, emitting `web/oregon.js` and `web/oregon.wasm`. The link reserves memory lazily (`-sINITIAL_MEMORY=4mb` growing to `-sMAXIMUM_MEMORY=32mb`); eager reservation (a fixed 256 MB start) made iOS Safari abort the page on reload under memory pressure, and every deploy should keep that lesson.
-
-### Run Web Server
-
-To play the game, start a local web server with [Node.js](https://nodejs.org/en/download/):
+To play locally, start the included web server and open http://localhost:8080:
 
 ```bash
 node scripts/dev-server.mjs 8080
 ```
 
-Then open http://localhost:8080 in your browser.
+### Deployment
 
-### Deploy Bundle
-
-GitHub Pages caches every file with a fixed `max-age=600`, so deploying the
-multi-file `web/` module graph lets a reload mix a stale entry module with
-fresh siblings and fail module instantiation before any launcher code runs.
-`scripts/bundle-web.sh` (run by CI for the Pages deployment) collapses the
-launcher and worker import graphs into single self-contained files in `dist/`
-and references the entry with a per-deploy `?v=<build-id>` query, making each
-page load atomically one deploy. It needs `esbuild` on `PATH` or in
-`$ESBUILD`; CI installs it with
-`npm install --no-save --no-package-lock esbuild@0.25.10`.
-
-To preview and verify the exact deployment locally:
-
-```bash
-scripts/bundle-web.sh --out dist
-node scripts/check-bundle.test.mjs dist        # bundle integrity
-node scripts/dev-server.mjs 8080 dist          # serve the deploy bundle
-node --test scripts/e2e-bundle.test.mjs        # boot dist/ in headless Chrome
-```
-
-`e2e-bundle.test.mjs` starts and stops its own dev server and finds Chrome via
-`$CHROME`, standard macOS app paths, or `google-chrome`/`chromium` on `PATH`;
-it skips with a reason when Chrome or `dist/` is absent.
+Every push to `main` is checked and deployed to GitHub Pages automatically by GitHub Actions — there is nothing to release by hand. The published site is a bundled, self-contained build of the game, so each update goes live as one consistent deploy.
 
 ## Checks
 
@@ -100,3 +54,7 @@ node scripts/run-tests.mjs
 scripts/browser-smoke.sh
 scripts/typecheck.sh
 ```
+
+## License
+
+This repository makes no copyright claim on the original game source. The FORTRAN port is OREGON 77 by Philipp Engel, licensed under the ISC license. All additions in this repository are licensed under the [ISC License](LICENSE).
