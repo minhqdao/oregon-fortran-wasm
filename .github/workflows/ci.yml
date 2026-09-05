@@ -74,7 +74,10 @@ jobs:
           SMOKE_NODE_MODULES: ${{ github.workspace }}/scripts/node_modules
         run: |
           npm install --no-save --no-package-lock --prefix scripts jsdom@26
-          node --test scripts/browser-smoke.test.mjs scripts/boot-guard.test.mjs
+          node --test scripts/browser-smoke.test.mjs scripts/boot-guard.test.mjs scripts/terminal-scroll.test.mjs scripts/terminal-keyboard.test.mjs scripts/terminal-log.test.mjs
+
+      - name: Mobile layout (headless Chrome)
+        run: node --test scripts/mobile-layout.test.mjs
 
   build-wasm:
     runs-on: ubuntu-latest

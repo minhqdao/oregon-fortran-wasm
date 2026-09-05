@@ -5,9 +5,13 @@
 //
 //   1. module instantiation errors (message-bearing) trigger one guarded
 //      recovery reload, then a visible diagnosis on the retry;
-//   2. message-less load failures surface as visible text without reloads;
-//   3. the watchdog reports a terminal stuck on LOADING... after 20 s;
-//   4. the guard disarms itself once the game produces first output, so
+//   2. message-less fetch failures get the same single guarded reload
+//      (transient blips usually clear on retry), then visible text;
+//      non-script resource errors (favicons, images) are ignored;
+//   3. unhandled promise rejections fold into the same reload-then-report
+//      path;
+//   4. the watchdog reports a terminal stuck on LOADING... after 20 s;
+//   5. the guard disarms itself once the game produces first output, so
 //      boot errors never misfire later in the session.
 //
 // jsdom lives in a scratch node_modules (see scripts/browser-smoke.sh); the
@@ -100,6 +104,26 @@ if (JSDOM) {
         const event = Object.assign(new window.Event("error"), props);
         window.dispatchEvent(event);
       },
+      fireResourceError: (tagName) => {
+        // Resource load failures carry the failed element as target and
+        // reach the window listener via capture. Dispatching on the element
+        // itself reproduces that (target = element, empty message).
+        const el = window.document.createElement(tagName);
+        window.document.body.appendChild(el);
+        const event = new window.Event("error");
+        el.dispatchEvent(event);
+        el.remove();
+      },
+      fireRejection: (reason) => {
+        const event = Object.assign(
+          new window.Event("unhandledrejection"),
+          { reason },
+        );
+        // jsdom's Event lacks preventDefault wiring for this synthetic
+        // type; the guard try/catches it, so a no-op suffices here.
+        event.preventDefault = () => {};
+        window.dispatchEvent(event);
+      },
     };
   }
 
@@ -136,17 +160,98 @@ if (JSDOM) {
     assert.equal(page.status().hidden, false);
   });
 
-  test("message-less load failure surfaces without reloading", async () => {
+  test("message-less load failure reloads once, then reports", async () => {
     const page = await openBootPage();
-    // Fetch-type failures (404, network) fire error events with no message.
+    // Fetch-type failures (404, network, transient blip) fire error events
+    // with no message; the first gets the same guarded reload as a module
+    // skew error, since a retry usually clears a blip.
     page.fireError({});
-    assert.equal(page.reloads.length, 0, "no reload for non-module failures");
+    assert.equal(
+      page.reloads.length,
+      1,
+      "first message-less failure triggers exactly one recovery reload",
+    );
+    assert.equal(
+      page.status().textContent,
+      "",
+      "no error text shown while the recovery reload is pending",
+    );
+
+    // Simulate the retried load: the guard already spent its one reload,
+    // so a persistent failure now surfaces as text instead of looping.
+    page.window.sessionStorage.setItem("oregon-module-reload", "1");
+    page.fireError({});
+    assert.equal(page.reloads.length, 1, "a second reload is never issued");
     assert.match(
       page.status().textContent,
       /failed to load.*Reload the page to retry/,
-      "load failure surfaces as actionable text",
+      "persistent load failure surfaces as actionable text",
     );
     assert.equal(page.status().hidden, false);
+  });
+
+  test("non-script resource errors are ignored", async () => {
+    const page = await openBootPage();
+    // Favicons, images and fonts fire the identical capture-phase error
+    // event; they cannot fail the boot and must not trip the guard.
+    page.fireResourceError("img");
+    page.fireResourceError("link");
+    assert.equal(
+      page.reloads.length,
+      0,
+      "favicon/image failures must not trigger a recovery reload",
+    );
+    assert.equal(
+      page.status().textContent,
+      "",
+      "favicon/image failures must not write boot status",
+    );
+    assert.equal(page.status().hidden, true);
+  });
+
+  test("unhandled rejection reloads once, then reports", async () => {
+    const page = await openBootPage();
+    page.fireRejection(
+      new page.window.Error(
+        "SyntaxError: Importing binding name 'x' is not found.",
+      ),
+    );
+    assert.equal(
+      page.reloads.length,
+      1,
+      "first rejection triggers exactly one recovery reload",
+    );
+    assert.equal(
+      page.status().textContent,
+      "",
+      "no error text shown while the recovery reload is pending",
+    );
+
+    page.window.sessionStorage.setItem("oregon-module-reload", "1");
+    page.fireRejection(new page.window.Error("boom"));
+    assert.equal(page.reloads.length, 1, "a second reload is never issued");
+    assert.match(
+      page.status().textContent,
+      /Failed to load: boom.*hard reload/,
+      "persistent rejection surfaces as visible status text",
+    );
+  });
+
+  test("message-less rejection reloads once, then reports", async () => {
+    const page = await openBootPage();
+    page.fireRejection(undefined);
+    assert.equal(
+      page.reloads.length,
+      1,
+      "first message-less rejection triggers a recovery reload",
+    );
+    page.window.sessionStorage.setItem("oregon-module-reload", "1");
+    page.fireRejection(undefined);
+    assert.match(
+      page.status().textContent,
+      /failed to load.*Reload the page to retry/,
+      "persistent message-less rejection surfaces as actionable text",
+    );
   });
 
   test("watchdog reports a terminal stuck on LOADING...", async () => {

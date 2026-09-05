@@ -20,4 +20,6 @@ npx -y -p typescript@5.9.2 tsc \
     web/terminal-output.js \
     web/terminal-render.js \
     web/terminal-scroll.js \
-    web/terminal-selection.js
+    web/terminal-selection.js \
+    web/terminal-keyboard.js \
+    web/terminal-log.js

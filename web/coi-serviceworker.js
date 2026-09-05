@@ -54,7 +54,18 @@ if (typeof window === 'undefined') {
                         headers: newHeaders,
                     });
                 })
-                .catch((e) => console.error(e))
+                // Local patch (upstream v0.1.7 swallows the failure):
+                // console.error returns undefined, so a rejected fetch used
+                // to fulfill respondWith with undefined -- surfacing as
+                // "FetchEvent.respondWith received an error: Returned
+                // response is null" and hiding the real network error.
+                // Rethrow so the page sees an honest fetch failure instead
+                // (the boot guard and the worker startup retries already
+                // recover from those).
+                .catch((e) => {
+                    console.error(e);
+                    throw e;
+                })
         );
     });
 

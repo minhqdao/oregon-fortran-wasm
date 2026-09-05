@@ -93,20 +93,10 @@ it skips with a reason when Chrome or `dist/` is absent.
 
 ## Checks
 
-Run the regression suite and the typecheck with:
+Run the regression suite, the browser smoke tests and the typecheck with:
 
 ```bash
 node scripts/run-tests.mjs
+scripts/browser-smoke.sh
 scripts/typecheck.sh
 ```
-
-The suite drives scripted game sessions through the WebAssembly build (the
-same runner worker the browser uses) and, when `gfortran` is available,
-against a native build as well, comparing transcripts byte for byte within
-the deterministic setup phase (the game's RNG is clock-seeded, so no session
-reaches the random turns). `--no-parity` skips the native comparison and a
-test name can be passed to run a subset.
-
-Boot-phase tests (the inline guard in `web/index.html`) run against jsdom
-through `scripts/browser-smoke.sh`, which installs jsdom into a scratch
-directory outside the repository.

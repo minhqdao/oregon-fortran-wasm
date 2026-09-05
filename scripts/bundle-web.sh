@@ -46,8 +46,9 @@ done
 BUILD_ID="$( (git rev-parse HEAD 2> /dev/null || true; \
     cat web/index.html web/coi-serviceworker.js web/launcher.js \
         web/runner.worker.js web/runner-protocol.js web/oregon.js \
-        web/terminal-input.js web/terminal-output.js web/terminal-render.js \
-        web/terminal-scroll.js web/terminal-selection.js 2> /dev/null) \
+        web/terminal-input.js web/terminal-keyboard.js web/terminal-log.js \
+        web/terminal-output.js web/terminal-render.js web/terminal-scroll.js \
+        web/terminal-selection.js 2> /dev/null) \
     | shasum -a 256 | cut -d' ' -f1 | cut -c1-12 )"
 
 mkdir -p "$OUT_DIR"
