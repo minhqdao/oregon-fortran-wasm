@@ -20,4 +20,5 @@ SMOKE_NODE_MODULES="$SMOKE_HOME/node_modules" exec node --test \
     scripts/terminal-scroll.test.mjs \
     scripts/terminal-keyboard.test.mjs \
     scripts/terminal-log.test.mjs \
+    scripts/terminal-text.test.mjs \
     "$@"

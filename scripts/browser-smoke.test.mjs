@@ -5,6 +5,11 @@
 // that focuses on pointerdown -- the bug this test was written for -- fails
 // here, not on someone's iPhone.
 //
+// It also pins the faithful input-forwarding contract: the field keeps
+// whatever the IME produced and the live echo mirrors it, while the game's
+// ASCII policy applies exactly once, at submit (composed accents must
+// yield their base letter, never vanish).
+//
 // jsdom lives in a scratch node_modules (see scripts/browser-smoke.sh); the
 // test skips gracefully when it has not been installed.
 //
@@ -222,5 +227,129 @@ if (JSDOM) {
     fire(screen, "click", { clientX: 50, clientY: 300 });
     assert.equal(calls.focus, 1, "plain click focuses exactly once");
     assert.equal(window.document.activeElement, input);
+  });
+
+  test("typed text echoes faithfully and submits the normalized line", async (t) => {
+    const { window, input } = await openLauncherPage();
+    const live = window.document.getElementById("input");
+    const output = window.document.getElementById("output");
+
+    // What the Vietnamese Telex IME leaves in the field after "l","o","o",
+    // "k": the second "o" was consumed to compose ô over the first.
+    input.value = "loôk";
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    assert.equal(live.textContent, "LOÔK", "the live echo shows the composed character");
+    assert.equal(input.value, "loôk", "typing never rewrites the native value");
+
+    input.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+    );
+    assert.ok(output.textContent.endsWith("LOOK\n"), "the transcript records the engine line");
+    assert.ok(!output.textContent.includes("LOÔK"), "the echo and engine line agree");
+    assert.equal(input.value, "", "submit clears the field");
+  });
+
+  test("đ, curly quotes and CJK normalize at submit, never while typing", async (t) => {
+    const { window, input } = await openLauncherPage();
+    const live = window.document.getElementById("input");
+    const output = window.document.getElementById("output");
+
+    input.value = "đ_on\u2019t 冒険";
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    assert.equal(live.textContent, "Đ_ON’T 冒険", "nothing is stripped mid-typing");
+
+    input.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+    );
+    assert.ok(
+      output.textContent.endsWith("D_ON'T \n"),
+      "stroke-d maps to D, curly quotes to ascii, CJK drops",
+    );
+  });
+
+  /** Counts field-selection writes; a caret move is an edit under an IME. */
+  function spyCaret(input) {
+    let writes = 0;
+    const native = input.setSelectionRange.bind(input);
+    input.setSelectionRange = (...args) => {
+      writes += 1;
+      return native(...args);
+    };
+    return () => writes;
+  }
+
+  test("IME composition owns the caret; plain typing re-pins it", async (t) => {
+    const { window, input } = await openLauncherPage();
+    const live = window.document.getElementById("input");
+    const caretWrites = spyCaret(input);
+
+    // Plain typing re-pins the caret to the end (append-only contract).
+    input.value = "OK";
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    assert.equal(caretWrites(), 1, "plain typing re-pins the caret");
+
+    // What macOS/Windows Telex IMEs hold as marked text while the user
+    // types a,s,s,s,s -- each update REPLACES the marked range. A caret
+    // write here instead corrupts the range, and every update re-inserts
+    // the whole pending composition (AÁASASS...).
+    input.dispatchEvent(new window.Event("compositionstart", { bubbles: true }));
+    for (const marked of ["a", "á", "ás", "áss", "ásss"]) {
+      input.value = marked;
+      input.dispatchEvent(new window.Event("input", { bubbles: true }));
+      assert.equal(live.textContent, marked.toUpperCase());
+    }
+    assert.equal(caretWrites(), 1, "input events under composition must not move the caret");
+
+    // Commit: the launcher takes the caret back, echo unchanged.
+    input.dispatchEvent(new window.Event("compositionend", { bubbles: true }));
+    assert.equal(caretWrites(), 2, "the commit re-takes the caret");
+    assert.equal(live.textContent, "ÁSSS");
+  });
+
+  test("Enter inside a composition commits it; the next Enter submits", async (t) => {
+    const { window, input } = await openLauncherPage();
+    const output = window.document.getElementById("output");
+
+    input.value = "loôk";
+    input.dispatchEvent(new window.Event("compositionstart", { bubbles: true }));
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+
+    // The committing Enter, in both shapes: the standard isComposing flag
+    // and Android's legacy keyCode 229.
+    input.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true }),
+    );
+    input.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true }),
+    );
+    assert.ok(!output.textContent.includes("LOOK\n"), "a composing Enter must not submit");
+
+    input.dispatchEvent(new window.Event("compositionend", { bubbles: true }));
+    input.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+    );
+    assert.ok(output.textContent.endsWith("LOOK\n"), "the line survives to submit");
+  });
+
+  test("tapping the terminal mid-composition leaves the field alone", async (t) => {
+    const { window, input, fire, touch, calls } = await openLauncherPage();
+    const screen = window.document.getElementById("screen");
+    const caretWrites = spyCaret(input);
+
+    input.dispatchEvent(new window.Event("compositionstart", { bubbles: true }));
+    input.value = "ásss";
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    calls.blur = 0;
+
+    // The released tap refocuses the field on iOS (blur + focus + caret
+    // re-pin); none of it may write the selection while the IME holds it --
+    // the user's report: the click appended the pending composition (ASSS)
+    // to the line one more time.
+    fire(screen, "pointerdown", touch(40, 250));
+    fire(screen, "pointerup", touch(40, 250));
+    fire(screen, "click", { clientX: 40, clientY: 250 });
+    assert.ok(calls.blur >= 1, "the tap must have taken the refocus path");
+    assert.equal(caretWrites(), 0, "the refocus path must not touch the caret mid-composition");
+    assert.equal(input.value, "ásss", "the field value is untouched");
   });
 }

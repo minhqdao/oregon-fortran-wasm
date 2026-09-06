@@ -35,6 +35,7 @@ import {
   shouldBlockNorthDrag,
 } from "./terminal-keyboard.js";
 import { hasTextSelection, updateTextContent } from "./terminal-selection.js";
+import { toEngineText } from "./terminal-text.js";
 import {
   createKeysBuffer,
   maxInputLength,
@@ -927,7 +928,10 @@ function submitInput() {
     return;
   }
 
-  const value = `${currentInput}\n`;
+  // The engine buffer stores one byte per character, so the line is
+  // normalized to printable ASCII exactly here -- the single policy choke
+  // point after the faithful forwarding that fed it.
+  const value = `${toEngineText(currentInput)}\n`;
   terminalText += value;
   pendingInputSeparator = true;
   currentInput = "";
@@ -971,7 +975,7 @@ function focusTerminalInput({ force = false } = {}) {
   // preventScroll: focusing must never yank the viewport around; opening the
   // keyboard itself may, which is Safari's own behavior and left alone.
   terminalInput.focus({ preventScroll: true });
-  moveInputCaretToEnd(terminalInput);
+  retakeCaret();
 }
 
 function restoreTerminalAfterVisibilityChange() {
@@ -1042,53 +1046,96 @@ function handleTerminalMouseDown(event) {
   }
 }
 
-// 1. Handle live typing, backspacing, and mobile "Return/Go" keys
+// --- the command line ---------------------------------------------------------
+//
+// The hidden field owns the text: the browser and its IME edit it, and the
+// launcher only reads. Every change is echoed to the visible line, and the
+// caret is re-pinned to the end so editing stays append-only. While an IME
+// composition is active the field is hands-off -- no value writes, no caret
+// moves: composed text REPLACES the character it accents, so touching the
+// field under the IME corrupts the marked range and every update then
+// re-inserts the whole composition instead (AÁASASS...), while stripping it
+// deletes the base letter outright (the original vanishing-character bug).
+// The game's ASCII policy applies exactly once, at submit (toEngineText).
+
+let composing = false;
+
+terminalInput.addEventListener("compositionstart", () => {
+  composing = true;
+});
+
+terminalInput.addEventListener("compositionend", () => {
+  composing = false;
+  // The IME handed the text over; re-echo the committed line and take the
+  // caret back for append-only editing.
+  if (waitingForInput) {
+    echoLiveInput();
+    retakeCaret();
+  }
+});
+
 terminalInput.addEventListener("input", (event) => {
   if (!waitingForInput) return;
 
-  // Mobile keyboards often insert a newline (\n) or trigger insertLineBreak instead of an 'Enter' keydown event
+  // Mobile keyboards often insert a newline (\n) or trigger insertLineBreak
+  // instead of an 'Enter' keydown event. The final input event's characters
+  // ride along in the field value, so take the live text, not the stale
+  // last echo; the newline itself is the submit signal, never part of the
+  // line (toEngineText drops it).
   if (
     /** @type {InputEvent} */ (event).inputType === "insertLineBreak" ||
     terminalInput.value.includes("\n")
   ) {
-    terminalInput.value = terminalInput.value.replace(/\n/g, "");
+    currentInput = liveInputText();
     submitInput();
     return;
   }
 
-  // iOS Smart Punctuation substitutes curly quotes even with autocorrect
-  // off; map them back before the ASCII filter so the native value, the
-  // echoed line and the submitted text agree (keyboard-lab blue24).
-  const unsmart = terminalInput.value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"');
-  if (unsmart !== terminalInput.value) terminalInput.value = unsmart;
-
-  // The input buffer stores one byte per character; drop anything outside
-  // printable ASCII (IME/CJK/pasted Unicode would otherwise wrap into wrong
-  // codes). Keeps the native value, display and submitted text consistent.
-  const printable = terminalInput.value.replace(/[^\x20-\x7E]/g, "");
-  if (printable !== terminalInput.value) terminalInput.value = printable;
-
-  // Enforce max length on the input field
-  if (terminalInput.value.length > maxInputLength) {
-    terminalInput.value = terminalInput.value.slice(0, maxInputLength);
-  }
-
-  // Convert to upper case for display only; never rewrite the native value here.
-  currentInput = terminalInput.value.toUpperCase();
-  moveInputCaretToEnd(terminalInput);
-  render();
-  scrollTerminalToBottom(screen);
+  echoLiveInput();
+  retakeCaret();
 });
 
-// 2. Handle desktop 'Enter' key press
+// Handle desktop 'Enter' key press. An Enter that belongs to an IME
+// composition (keyCode 229 is the legacy Android signal for it) commits the
+// marked text; submitting here would clear the field mid-composition. The
+// commit lands through compositionend above, and the next Enter submits.
 terminalInput.addEventListener("keydown", (event) => {
-  if (waitingForInput && event.key === "Enter") {
+  if (
+    waitingForInput &&
+    event.key === "Enter" &&
+    !event.isComposing &&
+    event.keyCode !== 229
+  ) {
     event.preventDefault();
     submitInput();
   }
 });
+
+/**
+ * The live line for display and submit, from the field's faithful value:
+ * upper-cased for the terminal and capped at the engine's line length.
+ * @returns {string}
+ */
+function liveInputText() {
+  return terminalInput.value.toUpperCase().slice(0, maxInputLength);
+}
+
+/** Echoes the field's current text to the terminal's input line. */
+function echoLiveInput() {
+  currentInput = liveInputText();
+  render();
+  scrollTerminalToBottom(screen);
+}
+
+/**
+ * Re-pins the caret to the end of the field (append-only editing). Never
+ * under an active composition: the IME owns the selection while its text is
+ * marked, and a selection write under it turns every composition update
+ * into an insertion of the full pending text.
+ */
+function retakeCaret() {
+  if (!composing) moveInputCaretToEnd(terminalInput);
+}
 
 terminalContainer.addEventListener("pointerdown", handleTerminalPointerDown);
 terminalContainer.addEventListener(
