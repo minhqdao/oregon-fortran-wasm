@@ -78,10 +78,14 @@ if (JSDOM) {
       runScripts: "dangerously",
       virtualConsole,
       beforeParse(window) {
-        const originalSetTimeout = window.setTimeout;
+        // Record the watchdog instead of scheduling it: the tests expire it
+        // deterministically via watchdog.fn(), so a real 20s timer only
+        // keeps the test process alive ~20s after the assertions pass.
+        let nextTimerId = 1;
         window.setTimeout = (fn, ms, ...rest) => {
           timers.push({ fn, ms });
-          return originalSetTimeout(fn, ms, ...rest);
+          void rest;
+          return nextTimerId++;
         };
       },
     });

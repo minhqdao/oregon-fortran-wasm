@@ -91,6 +91,12 @@ if (JSDOM) {
     globalThis.window = window;
     globalThis.document = window.document;
     globalThis.sessionStorage = window.sessionStorage;
+    // terminal-shell persists the measured keyboard height via bare
+    // `localStorage`. Without this, Node's experimental Web Storage (which
+    // warns without --localstorage-file) answers instead of jsdom's -- the
+    // ExperimentalWarning in the test output -- and the stored height leaks
+    // across scenarios instead of starting fresh per page like a browser.
+    globalThis.localStorage = window.localStorage;
     globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
     globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
     globalThis.Worker = FakeGameWorker;
