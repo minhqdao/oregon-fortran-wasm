@@ -98,6 +98,20 @@ jobs:
       - name: Mobile layout (headless Chrome)
         run: node --test scripts/mobile-layout.test.mjs
 
+      - name: WASM smoke test (committed artifacts)
+        run: |
+          node scripts/headless-test.mjs web/oregon.js N 3 200 100 50 50 50 2 2 2 | tee output.txt
+          grep -q "HOW GOOD A SHOT" output.txt
+          ! grep -q "INVALID" output.txt
+
+      - name: WASM smoke test (committed artifacts, STOP quits)
+        run: |
+          node scripts/headless-test.mjs web/oregon.js STOP | tee stop_output.txt
+          ! grep -q "HOW GOOD A SHOT" stop_output.txt
+          node scripts/headless-test.mjs web/oregon.js N STOP | tee stop_mid_output.txt
+          grep -q "HOW GOOD A SHOT" stop_mid_output.txt
+          ! grep -q "INVALID" stop_mid_output.txt
+
   build-wasm:
     runs-on: ubuntu-latest
     steps:
