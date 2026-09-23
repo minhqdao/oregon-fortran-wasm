@@ -205,6 +205,9 @@ jobs:
         run: |
           ESBUILD=node_modules/.bin/esbuild scripts/bundle-web.sh --out dist
 
+      - name: Verify final deploy bundle
+        run: node scripts/check-bundle.test.mjs dist
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
