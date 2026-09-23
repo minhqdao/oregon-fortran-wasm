@@ -29,32 +29,37 @@ Run the game with `./oregon`.
 
 ## WebAssembly Build
 
-Prebuilt `web/oregon.js` and `web/oregon.wasm` (LFortran 0.65.0, Emscripten 6.0.9) are committed, so you can run the web version without a toolchain; CI rebuilds them for each deployment. To rebuild them yourself, install [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/), make sure both are on your `PATH`, and run:
+The browser terminal (transcript, command line with IME support, scrolling,
+soft-keyboard handling) lives in the [terminal-shell](https://www.npmjs.com/package/terminal-shell)
+npm package; this launcher is host glue only (worker lifecycle, isolation
+recovery, status, restart).
+
+Prebuilt `web/oregon.js` and `web/oregon.wasm` (LFortran 0.65.0, Emscripten 6.0.10) are committed, so you can run the web version without a toolchain; CI rebuilds them for each deployment. To rebuild them yourself, install [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/), make sure both are on your `PATH`, and run:
 
 ```bash
-scripts/build-web.sh
+npm run build:wasm
 ```
+
+> Web builds stay on LFortran 0.65.x (pinned in CI): 0.66.0 regressed sequential stdin reads on the wasm target (only the first input line is ever consumed, so every session quits right after it — see the follow-up to lfortran/lfortran#12654).
 
 To play locally, start the included web server and open http://localhost:8080:
 
 ```bash
-node scripts/dev-server.mjs 8080
+npm run dev
 ```
 
 ### Deployment
 
-Every push to `main` is checked and deployed to GitHub Pages automatically by GitHub Actions — there is nothing to release by hand. The published site is a bundled, self-contained build of the game, so each update goes live as one consistent deploy.
+Every push to `main` is checked and deployed to GitHub Pages automatically via GitHub Actions — there is nothing to release by hand. The published site is a bundled, self-contained build of the game, so each update goes live as one consistent deploy.
 
 ## Checks
 
 Run the regression suite, the browser smoke tests and the typecheck with:
 
 ```bash
-node scripts/run-tests.mjs
-scripts/browser-smoke.sh
-scripts/typecheck.sh
+npm run all
 ```
 
 ## License
 
-This repository makes no copyright claim on the original game source. The FORTRAN port is OREGON 77 by Philipp Engel, licensed under the ISC license. All additions in this repository are licensed under the [ISC License](LICENSE).
+This repository makes no copyright claim on the original game source. The FORTRAN port is OREGON 77 by Philipp Engel, licensed under the ISC license. All additions in this repository are also licensed under the [ISC License](LICENSE).
