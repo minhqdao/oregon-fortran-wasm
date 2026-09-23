@@ -161,10 +161,19 @@
            the outer page by itself -- the pre-9dea85f contract. The touch
            shell below overrides this with overflow hidden, where the
            JS-driven log (blue29/30, iOS rubber-band fixes) owns every
-           write instead. */
+           write instead. The scrollbar itself stays hidden -- a bare
+           phosphor transcript with no chrome is the retro look -- while
+           wheel, touch, and keyboard scrolling keep working. */
         overflow-y: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
         padding: 28px;
         text-shadow: 0 0 2px rgba(200, 248, 200, 0.35);
+      }
+      #screen::-webkit-scrollbar {
+        display: none;
+        height: 0;
+        width: 0;
       }
       /* Android only (launcher.js sets the attribute): native transcript
          there too, for the same reason as desktop -- the browser owns the
