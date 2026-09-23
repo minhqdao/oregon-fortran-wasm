@@ -1,0 +1,29 @@
+{
+  "name": "oregon-fortran-wasm",
+  "private": true,
+  "description": "The Oregon Trail (1978) as a Fortran-to-WebAssembly browser game",
+  "type": "module",
+  "license": "ISC",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "terminal-shell": "^0.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "jsdom": "^30.1.1"
+  },
+  "scripts": {
+    "build:wasm": "scripts/build-web.sh",
+    "dev": "node scripts/dev-server.mjs 8080",
+    "lint": "eslint .",
+    "test": "node scripts/run-tests.mjs",
+    "test:browser": "scripts/browser-smoke.sh",
+    "typecheck": "scripts/typecheck.sh",
+    "all": "npm run lint && npm run typecheck && npm run test && npm run test:browser"
+  }
+}

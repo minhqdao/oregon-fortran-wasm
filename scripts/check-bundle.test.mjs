@@ -40,6 +40,11 @@ test("deploy bundle is self-contained", () => {
     /^import\s/m,
     "bundled runner.worker.js must not start any static import statement",
   );
+
+  // The worker entry is a side-effect-only import of the package's worker
+  // module; a bundler that tree-shakes it away (wrong sideEffects list)
+  // produces an empty worker that boots nothing.
+  assert.match(worker, /onmessage/, "bundled runner.worker.js must wire onmessage");
   assert.doesNotMatch(
     launcher,
     /\bfrom\s+["'][^"']+["']/,

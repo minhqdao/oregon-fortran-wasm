@@ -9,14 +9,14 @@
 # import graph (launcher + worker) into one self-contained launcher.js and
 # one runner.worker.js, so each is cached atomically: always entirely stale
 # or entirely fresh, never mixed. A query-string build id busts the fixed
-# max-age after deploys. esbuild runs with --packages=external because the
-# sources import no npm packages; the only external reference kept is the
-# wasm URL built from import.meta.url, which the worker resolves at runtime.
+# max-age after deploys. The launcher imports the terminal-shell npm
+# package; esbuild bundles it into the same self-contained files and the
+# build id above flips whenever the package changes.
 #
 # Usage: scripts/bundle-web.sh [--out DIR]
 #   --out DIR   output directory (default: dist)
 #
-# Requires esbuild from PATH or at $ESBUILD (the CI job installs it via npm).
+# Requires esbuild from PATH or at $ESBUILD (npm install provides it).
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -45,10 +45,8 @@ done
 # versioned entry exists to prevent.
 BUILD_ID="$( (git rev-parse HEAD 2> /dev/null || true; \
     cat web/index.html web/coi-serviceworker.js web/launcher.js \
-        web/runner.worker.js web/runner-protocol.js web/oregon.js \
-        web/terminal-input.js web/terminal-keyboard.js web/terminal-log.js \
-        web/terminal-output.js web/terminal-render.js web/terminal-scroll.js \
-        web/terminal-selection.js web/terminal-text.js 2> /dev/null) \
+        web/runner.worker.js web/oregon.js \
+        node_modules/terminal-shell/src/*.js package.json package-lock.json 2> /dev/null) \
     | shasum -a 256 | cut -d' ' -f1 | cut -c1-12 )"
 
 mkdir -p "$OUT_DIR"
@@ -77,7 +75,6 @@ rm -f "$OUT_DIR/index.html.bak"
     --format=esm \
     --target=es2020 \
     --outfile="$OUT_DIR/launcher.js" \
-    --packages=external \
     --legal-comments=none
 
 "$ESBUILD" web/runner.worker.js \
@@ -85,7 +82,6 @@ rm -f "$OUT_DIR/index.html.bak"
     --format=esm \
     --target=es2020 \
     --outfile="$OUT_DIR/runner.worker.js" \
-    --packages=external \
     --legal-comments=none
 
 cp web/oregon.js web/oregon.wasm "$OUT_DIR/"

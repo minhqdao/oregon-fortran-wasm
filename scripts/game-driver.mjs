@@ -16,7 +16,7 @@ import { spawn } from "node:child_process";
 import {
   createKeysBuffer,
   writeInputLine,
-} from "../web/runner-protocol.js";
+} from "terminal-shell/protocol";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 

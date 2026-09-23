@@ -159,7 +159,10 @@ export async function startChromeE2E({
           maxRetries: 5,
           retryDelay: 50,
         });
-      } catch {}
+      } catch {
+        // Best-effort scratch cleanup: a half-removed profile is harmless
+        // (the pid keeps the next run from colliding with leftovers).
+      }
     };
 
     const serverUp = await waitUntil(async () => {
@@ -251,7 +254,7 @@ export async function startChromeE2E({
       // flake this retries for, so fail immediately.
       ws.close();
       close();
-      throw new Error(error.message);
+      throw new Error(error.message, { cause: error });
     }
 
     return { send, evaluate, close };

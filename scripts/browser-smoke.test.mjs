@@ -153,7 +153,7 @@ if (JSDOM) {
     return { window, input, calls, fire, touch };
   }
 
-  test("touch-down alone does not open the keyboard", async (t) => {
+  test("touch-down alone does not open the keyboard", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     input.blur();
     calls.focus = 0;
@@ -163,7 +163,7 @@ if (JSDOM) {
     fire(window.document.getElementById("screen"), "pointercancel", touch(50, 300));
   });
 
-  test("tap on the terminal raises the keyboard", async (t) => {
+  test("tap on the terminal raises the keyboard", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     input.blur();
@@ -175,7 +175,7 @@ if (JSDOM) {
     assert.equal(window.document.activeElement, input);
   });
 
-  test("tap while focused-but-keyboard-closed re-activates on iOS", async (t) => {
+  test("tap while focused-but-keyboard-closed re-activates on iOS", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     // State right after the game's auto-focus: field focused, no keyboard.
@@ -192,7 +192,7 @@ if (JSDOM) {
     assert.equal(window.document.activeElement, input);
   });
 
-  test("scroll drag over the terminal does not open the keyboard", async (t) => {
+  test("scroll drag over the terminal does not open the keyboard", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     input.blur();
@@ -207,7 +207,7 @@ if (JSDOM) {
     assert.notEqual(window.document.activeElement, input);
   });
 
-  test("cancelled gesture (browser scroll takeover) does not open the keyboard", async (t) => {
+  test("cancelled gesture (browser scroll takeover) does not open the keyboard", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     input.blur();
@@ -218,7 +218,7 @@ if (JSDOM) {
     assert.notEqual(window.document.activeElement, input);
   });
 
-  test("desktop click still focuses the command field", async (t) => {
+  test("desktop click still focuses the command field", async () => {
     const { window, input, fire, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     input.blur();
@@ -229,7 +229,7 @@ if (JSDOM) {
     assert.equal(window.document.activeElement, input);
   });
 
-  test("typed text echoes faithfully and submits the normalized line", async (t) => {
+  test("typed text echoes faithfully and submits the normalized line", async () => {
     const { window, input } = await openLauncherPage();
     const live = window.document.getElementById("input");
     const output = window.document.getElementById("output");
@@ -249,7 +249,7 @@ if (JSDOM) {
     assert.equal(input.value, "", "submit clears the field");
   });
 
-  test("đ, curly quotes and CJK normalize at submit, never while typing", async (t) => {
+  test("đ, curly quotes and CJK normalize at submit, never while typing", async () => {
     const { window, input } = await openLauncherPage();
     const live = window.document.getElementById("input");
     const output = window.document.getElementById("output");
@@ -278,7 +278,7 @@ if (JSDOM) {
     return () => writes;
   }
 
-  test("IME composition owns the caret; plain typing re-pins it", async (t) => {
+  test("IME composition owns the caret; plain typing re-pins it", async () => {
     const { window, input } = await openLauncherPage();
     const live = window.document.getElementById("input");
     const caretWrites = spyCaret(input);
@@ -306,7 +306,7 @@ if (JSDOM) {
     assert.equal(live.textContent, "ÁSSS");
   });
 
-  test("Enter inside a composition commits it; the next Enter submits", async (t) => {
+  test("Enter inside a composition commits it; the next Enter submits", async () => {
     const { window, input } = await openLauncherPage();
     const output = window.document.getElementById("output");
 
@@ -331,7 +331,7 @@ if (JSDOM) {
     assert.ok(output.textContent.endsWith("LOOK\n"), "the line survives to submit");
   });
 
-  test("tapping the terminal mid-composition leaves the field alone", async (t) => {
+  test("tapping the terminal mid-composition leaves the field alone", async () => {
     const { window, input, fire, touch, calls } = await openLauncherPage();
     const screen = window.document.getElementById("screen");
     const caretWrites = spyCaret(input);

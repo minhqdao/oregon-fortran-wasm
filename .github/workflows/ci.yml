@@ -12,18 +12,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler:
-          - gfortran
-          - lfortran
-          - flang
+        include:
+          - compiler: gfortran
+            version: latest
+          # Pinned: LFortran 0.66.0 regressed sequential stdin reads (see
+          # the README guard note); stay on 0.65.x until that's fixed
+          # upstream. Supported by fortran-lang/setup-fortran's table.
+          - compiler: lfortran
+            version: "0.65.0"
+          - compiler: flang
+            version: latest
 
     steps:
       - uses: actions/checkout@v7
 
       - name: Setup Fortran
-        uses: minhqdao/setup-fortran@v1
+        uses: fortran-lang/setup-fortran@v2.0.0-beta.10
         with:
           compiler: ${{ matrix.compiler }}
+          version: ${{ matrix.version }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
 
       - name: Build (gfortran)
         if: matrix.compiler == 'gfortran'
@@ -65,16 +81,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Lint JavaScript sources
+        run: npm run lint
 
       - name: Typecheck @ts-check sources (strict)
         run: scripts/typecheck.sh
 
       - name: Browser smoke tests (launcher gestures + boot guard)
-        env:
-          SMOKE_NODE_MODULES: ${{ github.workspace }}/scripts/node_modules
-        run: |
-          npm install --no-save --no-package-lock --prefix scripts jsdom@26
-          node --test scripts/browser-smoke.test.mjs scripts/boot-guard.test.mjs scripts/terminal-scroll.test.mjs scripts/terminal-keyboard.test.mjs scripts/terminal-log.test.mjs scripts/terminal-text.test.mjs
+        run: scripts/browser-smoke.sh
 
       - name: Mobile layout (headless Chrome)
         run: node --test scripts/mobile-layout.test.mjs
@@ -85,9 +104,13 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup LFortran
-        uses: minhqdao/setup-fortran@v1
+        uses: fortran-lang/setup-fortran@v2.0.0-beta.10
         with:
           compiler: lfortran
+          # Pinned: 0.66.0 regressed sequential stdin reads on the wasm
+          # target (see the README guard note); the deploy bundle is built
+          # with this toolchain, so it must stay on 0.65.x too.
+          version: "0.65.0"
 
       - name: Setup Emscripten
         uses: emscripten-core/setup-emsdk@v16
@@ -96,6 +119,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
 
       - name: Build WebAssembly
         env:
@@ -124,7 +151,6 @@ jobs:
 
       - name: Verify deploy bundle
         run: |
-          npm install --no-save --no-package-lock --prefix . esbuild@0.25.10
           ESBUILD=node_modules/.bin/esbuild scripts/bundle-web.sh --out dist
           node scripts/check-bundle.test.mjs dist
 
@@ -170,10 +196,13 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
 
       - name: Bundle web deploy
         run: |
-          npm install --no-save --no-package-lock --prefix . esbuild@0.25.10
           ESBUILD=node_modules/.bin/esbuild scripts/bundle-web.sh --out dist
 
       - name: Configure Pages

@@ -33,7 +33,7 @@ import {
   maxInputLength,
   readInputLine,
   writeInputLine,
-} from "../web/runner-protocol.js";
+} from "terminal-shell/protocol";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const wasmPath = `${root}web/oregon.js`;
@@ -197,7 +197,7 @@ function resolveNativeBinary() {
   const gfortran = spawnSync("gfortran", ["--version"], { encoding: "utf8" });
   if (gfortran.status !== 0) return null;
 
-  let needsBuild = true;
+  let needsBuild;
   try {
     const binaryTime = statSync(nativeBinary).mtimeMs;
     needsBuild = sources.some((path) => statSync(path).mtimeMs > binaryTime);

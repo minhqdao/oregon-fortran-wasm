@@ -13,6 +13,12 @@ const root = process.argv[3]
   ? fileURLToPath(new URL(process.argv[3], `file://${process.cwd()}/`))
   : fileURLToPath(new URL("../web", import.meta.url));
 const port = Number(process.argv[2]) || 8080;
+// The web sources import the terminal-shell npm package by relative path
+// (../node_modules/...); the browser clamps that import to /node_modules/...
+// under the served root, so the installed package is mounted there. (The
+// bundled dist/ inlines the package, so the mount only matters for this
+// dev server.)
+const modulesRoot = fileURLToPath(new URL("../node_modules", import.meta.url));
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -31,8 +37,11 @@ createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     let pathname = decodeURIComponent(url.pathname);
     if (pathname.endsWith("/")) pathname += "index.html";
-    const filePath = normalize(join(root, pathname));
-    if (!filePath.startsWith(root + sep)) {
+    const [serveRoot, servePath] = pathname.startsWith("/node_modules/")
+      ? [modulesRoot, pathname.slice("/node_modules".length + 1)] // "/node_modules/x" -> "/x" under node_modules/
+      : [root, pathname];
+    const filePath = normalize(join(serveRoot, servePath));
+    if (!filePath.startsWith(serveRoot + sep)) {
       response.writeHead(403).end();
       return;
     }
