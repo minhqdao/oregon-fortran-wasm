@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup Fortran
-        uses: fortran-lang/setup-fortran@v2.0.0-beta.10
+        uses: fortran-lang/setup-fortran@v2.0.0-beta.11
         with:
           compiler: ${{ matrix.compiler }}
           version: ${{ matrix.version }}
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup LFortran
-        uses: fortran-lang/setup-fortran@v2.0.0-beta.10
+        uses: fortran-lang/setup-fortran@v2.0.0-beta.11
         with:
           compiler: lfortran
           # Pinned: 0.66.0 regressed sequential stdin reads on the wasm
