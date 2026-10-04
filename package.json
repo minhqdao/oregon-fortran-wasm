@@ -24,6 +24,6 @@
     "test": "node scripts/run-tests.mjs",
     "test:browser": "scripts/browser-smoke.sh",
     "typecheck": "scripts/typecheck.sh",
-    "all": "npm run lint && npm run typecheck && npm run test && npm run test:browser"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:browser"
   }
 }

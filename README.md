@@ -57,7 +57,7 @@ Every push to `main` is checked and deployed to GitHub Pages automatically via G
 Run the regression suite, browser smoke tests, and typecheck with:
 
 ```bash
-npm run all
+npm run verify
 ```
 
 
