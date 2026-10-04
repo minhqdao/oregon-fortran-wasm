@@ -4,15 +4,15 @@
 [![Play online](https://img.shields.io/website?url=https%3A%2F%2Fminhqdao.github.io%2Foregon-fortran-wasm%2F&logo=webassembly&label=play%20online)](https://minhqdao.github.io/oregon-fortran-wasm/)
 [![License](https://img.shields.io/github/license/minhqdao/oregon-fortran-wasm)](LICENSE)
 
-The Oregon Trail is a text-based educational computer game originally developed in 1971 by Don Rawitsch, Bill Heinemann, and Paul Dillenberger in HP Time-Shared BASIC. A revised version of the game was later published in the May/June 1978 issue of _Creative Computing_ magazine.
+The Oregon Trail is a text-based educational game originally developed in 1971 by Don Rawitsch, Bill Heinemann, and Paul Dillenberger in HP Time-Shared BASIC. A revised version was published in the May/June 1978 issue of _Creative Computing_ magazine.
 
-This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 version of the game created by Philipp Engel and published in 2022 under the ISC license.
+This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 version created by Philipp Engel and published in 2022 under the ISC license.
 
-The goal of this project is to explore Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang. The game is currently built with LFortran and Emscripten and runs entirely in the browser — [play it online](https://minhqdao.github.io/oregon-fortran-wasm/).
+The goal is to explore Fortran-to-WebAssembly compilation using modern Fortran compilers such as LFortran and LLVM Flang. The game is currently built with LFortran and Emscripten and runs entirely in the browser.
 
 ## Native Build
 
-Requires `gfortran`, `lfortran`, or `flang`; other compilers may work but have not been tested.
+Tested with `gfortran`, `lfortran`, and `flang`.
 
 ```bash
 # gfortran
@@ -29,37 +29,38 @@ Run the game with `./oregon`.
 
 ## WebAssembly Build
 
-The browser terminal (transcript, command line with IME support, scrolling,
-soft-keyboard handling) lives in the [terminal-shell](https://www.npmjs.com/package/terminal-shell)
-npm package; this launcher is host glue only (worker lifecycle, isolation
-recovery, status, restart).
+Prebuilt `web/oregon.js` and `web/oregon.wasm` are committed, so no toolchain is needed to run the web version. CI rebuilds them for each deployment.
 
-Prebuilt `web/oregon.js` and `web/oregon.wasm` (LFortran 0.65.0, Emscripten 6.0.10) are committed, so you can run the web version without a toolchain; CI rebuilds them for each deployment. To rebuild them yourself, install [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/), make sure both are on your `PATH`, and run:
+To rebuild them locally, install [LFortran](https://lfortran.org/) and [Emscripten](https://emscripten.org/), make sure both are on your `PATH`, and run:
 
 ```bash
 npm run build:wasm
 ```
 
-> Web builds stay on LFortran 0.65.x (pinned in CI): 0.66.0 regressed sequential stdin reads on the wasm target (only the first input line is ever consumed, so every session quits right after it — see the follow-up to lfortran/lfortran#12654).
+> Web builds use LFortran 0.65.0. LFortran 0.66.0 currently breaks sequential stdin reads on WebAssembly.
 
-To play locally, start the included web server and open http://localhost:8080:
+To run locally:
 
 ```bash
 npm run dev
 ```
 
-### Deployment
+Then open http://localhost:8080.
 
-Every push to `main` is checked and deployed to GitHub Pages automatically via GitHub Actions — there is nothing to release by hand. The published site is a bundled, self-contained build of the game, so each update goes live as one consistent deploy.
+
+## Deployment
+
+Every push to `main` is checked and deployed to GitHub Pages automatically via GitHub Actions.
 
 ## Checks
 
-Run the regression suite, the browser smoke tests and the typecheck with:
+Run the regression suite, browser smoke tests, and typecheck with:
 
 ```bash
 npm run all
 ```
 
+
 ## License
 
-This repository makes no copyright claim on the original game source. The FORTRAN port is OREGON 77 by Philipp Engel, licensed under the ISC license. All additions in this repository are also licensed under the [ISC License](LICENSE).
+This repository makes no copyright claim on the existing game or source code. All original additions made for this project are licensed under the [ISC License](LICENSE).
