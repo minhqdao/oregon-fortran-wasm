@@ -4,6 +4,8 @@
 [![Play online](https://img.shields.io/website?url=https%3A%2F%2Fminhqdao.github.io%2Foregon-fortran-wasm%2F&logo=webassembly&label=play%20online)](https://minhqdao.github.io/oregon-fortran-wasm/)
 [![License](https://img.shields.io/github/license/minhqdao/oregon-fortran-wasm)](LICENSE)
 
+[![Demo of the game running in the browser](docs/demo.gif)](https://minhqdao.github.io/oregon-fortran-wasm/)
+
 The Oregon Trail is a text-based educational game originally developed in 1971 by Don Rawitsch, Bill Heinemann, and Paul Dillenberger in HP Time-Shared BASIC. A revised version was published in the May/June 1978 issue of _Creative Computing_ magazine.
 
 This project is based on **OREGON 77**, an ANSI FORTRAN 77 port of the 1978 version created by Philipp Engel and published in 2022 under the ISC license.
