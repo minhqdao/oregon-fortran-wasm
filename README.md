@@ -39,7 +39,7 @@ To rebuild them locally, install [LFortran](https://lfortran.org/) and [Emscript
 npm run build:wasm
 ```
 
-> Web builds use LFortran 0.65.0. LFortran 0.66.0 currently breaks sequential stdin reads on WebAssembly.
+> Tested with LFortran 0.67.0 from conda-forge. If you encounter build issues, try using this version.
 
 To run locally:
 
