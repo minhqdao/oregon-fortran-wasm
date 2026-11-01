@@ -15,7 +15,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
-    "jsdom": "^30.1.2"
+    "jsdom": "^30.1.3"
   },
   "scripts": {
     "build:wasm": "scripts/build-web.sh",
