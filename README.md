@@ -39,9 +39,7 @@ To rebuild them locally, install [LFortran](https://lfortran.org/) (>= 0.69.0) a
 npm run build:wasm
 ```
 
-> Tested with LFortran 0.69.0 and Emscripten 7.0.0. If you encounter build issues, try using these versions.
-
-To run locally:
+Run locally:
 
 ```bash
 npm run dev
