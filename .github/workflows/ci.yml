@@ -24,7 +24,6 @@ jobs:
         uses: fortran-lang/setup-fortran@v2.0.0-beta.16
         with:
           compiler: ${{ matrix.compiler }}
-          version: ${{ matrix.version }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
