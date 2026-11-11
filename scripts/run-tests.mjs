@@ -24,7 +24,8 @@
 //                        with gfortran (for CI matrix jobs that each built
 //                        the game with a different compiler).
 
-import { statSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runNative, runWasm, normalize } from "./game-driver.mjs";
@@ -206,6 +207,7 @@ function resolveNativeBinary() {
   }
 
   if (needsBuild) {
+    mkdirSync(dirname(nativeBinary), { recursive: true });
     const build = spawnSync(
       "gfortran",
       [...sources, "-o", nativeBinary],
