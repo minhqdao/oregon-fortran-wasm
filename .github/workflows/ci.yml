@@ -15,6 +15,7 @@ jobs:
         include:
           - compiler: gfortran
           - compiler: lfortran
+            version: "0.69.0"
           - compiler: flang
 
     steps:
@@ -115,9 +116,12 @@ jobs:
         uses: fortran-lang/setup-fortran@v2.0.0-beta.12
         with:
           compiler: lfortran
+          version: "0.69.0"
 
       - name: Setup Emscripten
         uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: "7.0.0"
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -129,8 +133,6 @@ jobs:
         run: npm ci
 
       - name: Build WebAssembly
-        env:
-          EMCC: ${{ env.EMSDK }}/upstream/emscripten/emcc
         run: scripts/build-web.sh
 
       - name: WASM smoke test
